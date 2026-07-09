@@ -33,9 +33,27 @@ Get-ChildItem $dest -Recurse -Force -Include `
 
 $zip = Join-Path $repo "bin/Relativity-$Version.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
-Compress-Archive -Path (Join-Path $stage "GameData") -DestinationPath $zip
+
+# Zip with forward-slash entry names. PowerShell 5.1's Compress-Archive writes
+# backslash separators, which break CKAN and non-Windows extraction — so build the
+# archive via .NET, forcing '/' in every entry path.
+Add-Type -AssemblyName System.IO.Compression | Out-Null
+Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
+$stageRoot = (Resolve-Path $stage).Path.TrimEnd('\', '/')
+$fs = [System.IO.File]::Open($zip, [System.IO.FileMode]::Create)
+$archive = New-Object System.IO.Compression.ZipArchive($fs, [System.IO.Compression.ZipArchiveMode]::Create)
+try {
+    Get-ChildItem -Path $stage -Recurse -File | ForEach-Object {
+        $rel = $_.FullName.Substring($stageRoot.Length + 1) -replace '\\', '/'   # force '/'
+        $entry = $archive.CreateEntry($rel, [System.IO.Compression.CompressionLevel]::Optimal)
+        $out = $entry.Open()
+        $in = [System.IO.File]::OpenRead($_.FullName)
+        try { $in.CopyTo($out) } finally { $in.Dispose(); $out.Dispose() }
+    }
+} finally {
+    $archive.Dispose(); $fs.Dispose()
+}
 Write-Host "==> packaged $zip" -ForegroundColor Green
-Write-Host "    Contents:" -ForegroundColor Cyan
-Expand-Archive -Path $zip -DestinationPath (Join-Path $repo "bin/_verify") -Force
-Get-ChildItem (Join-Path $repo "bin/_verify") -Recurse -File | ForEach-Object { "      " + $_.FullName.Substring((Join-Path $repo 'bin/_verify').Length + 1) }
-Remove-Item (Join-Path $repo "bin/_verify") -Recurse -Force
+Write-Host "    Contents (entry paths — must use '/'):" -ForegroundColor Cyan
+$reader = [System.IO.Compression.ZipFile]::OpenRead($zip)
+try { $reader.Entries | ForEach-Object { "      " + $_.FullName } } finally { $reader.Dispose() }
