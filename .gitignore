@@ -1,0 +1,27 @@
+# Build output
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# KSPBuildTools: per-machine KSP path lives here, never commit
+*.csproj.user
+
+# KSP / Unity assemblies and any decompiled output stay LOCAL only.
+# Only interop facts (signatures cited in docs) may be committed — never the DLLs
+# or a raw decompiled dump (closed-source; Take2 EULA).
+*.dll
+*.pdb
+Managed/
+*-decompiled/
+*-cleaned.dll
+
+# KSP writes runtime state under a mod's folder (settings, MM cache); via the
+# GameData/Relativity junction those would land in this repo — keep them out.
+GameData/**/PluginData/
+GameData/**/*.ConfigCache
+GameData/**/*.ConfigSHA
+
+# OS
+.DS_Store

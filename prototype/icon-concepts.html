@@ -1,0 +1,163 @@
+<!-- Relativity mod 아이콘 후보를 SVG로 렌더해 툴바(38px)·썸네일(128px)·명암 배경으로 비교하는 단일 파일 시트 -->
+<meta charset="utf-8">
+<title>Relativity — icon concepts</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #0d1017; color: #e6edf3;
+         font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 28px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #8b98a8; margin: 0 0 24px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: #8b98a8;
+       margin: 30px 0 12px; border-bottom: 1px solid #222a35; padding-bottom: 6px; }
+
+  /* simulated KSP toolbar: dark bar, 38px icons in a row */
+  .toolbar { display: flex; gap: 6px; align-items: center; background: #12161d;
+             border: 1px solid #222a35; border-radius: 8px; padding: 8px 10px; width: max-content; }
+  .toolbar svg { width: 38px; height: 38px; color: #cfe8ff;
+                 background: #1b212b; border-radius: 6px; padding: 4px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px,1fr)); gap: 16px; }
+  .card { background: #12161d; border: 1px solid #222a35; border-radius: 12px; padding: 16px; }
+  .name { font-weight: 700; margin: 0 0 2px; }
+  .desc { color: #8b98a8; font-size: 12.5px; margin: 0 0 14px; }
+  .swatches { display: flex; gap: 12px; align-items: center; }
+  .tile { border-radius: 12px; padding: 14px; display: grid; place-items: center; }
+  .tile.dark { background: #0a0e14; }
+  .tile.light { background: #eef2f7; }
+  .tile svg { width: 96px; height: 96px; display: block; }
+  .tile.dark svg { color: #cfe8ff; }
+  .tile.light svg { color: #16202e; }
+  .mini { margin-left: auto; }
+  .mini svg { width: 38px; height: 38px; color: #cfe8ff; background: #1b212b; border-radius: 6px; padding: 4px; }
+</style>
+
+<!-- ===== master symbol defs (hidden) ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="gdop" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4aa8ff"/>
+      <stop offset="1" stop-color="#ff5c5c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- A. γ mono -->
+  <symbol id="ic-gamma" viewBox="0 0 100 100">
+    <text x="50" y="76" text-anchor="middle" font-family="Georgia,'Times New Roman',serif"
+          font-size="86" font-weight="700" fill="currentColor">&#947;</text>
+  </symbol>
+
+  <!-- A2. γ + light streak -->
+  <symbol id="ic-gamma-streak" viewBox="0 0 100 100">
+    <line x1="9" y1="88" x2="91" y2="24" stroke="currentColor" stroke-width="7"
+          stroke-linecap="round" opacity="0.30"/>
+    <text x="50" y="76" text-anchor="middle" font-family="Georgia,'Times New Roman',serif"
+          font-size="86" font-weight="700" fill="currentColor">&#947;</text>
+  </symbol>
+
+  <!-- B. light-wall / asymptote -->
+  <symbol id="ic-wall" viewBox="0 0 100 100">
+    <line x1="82" y1="14" x2="82" y2="86" stroke="#ff5c5c" stroke-width="6" stroke-linecap="round"/>
+    <path d="M12 84 C 52 82, 74 80, 80 16" fill="none" stroke="currentColor"
+          stroke-width="8" stroke-linecap="round"/>
+  </symbol>
+
+  <!-- C. doppler chevrons (aft red → fore blue) -->
+  <symbol id="ic-doppler" viewBox="0 0 100 100">
+    <g fill="none" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="24,24 46,50 24,76" stroke="#ff5c5c"/>
+      <polyline points="44,24 66,50 44,76" stroke="#c06be0"/>
+      <polyline points="64,24 86,50 64,76" stroke="#4aa8ff"/>
+    </g>
+  </symbol>
+
+  <!-- D. two clocks (twin paradox) -->
+  <symbol id="ic-clocks" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="34" fill="none" stroke="currentColor" stroke-width="6"/>
+    <line x1="50" y1="50" x2="50" y2="22" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+    <line x1="50" y1="50" x2="73" y2="61" stroke="#4aa8ff" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="50" cy="50" r="4.5" fill="currentColor"/>
+  </symbol>
+
+  <!-- E. combo: γ on a doppler disc (thumbnail-oriented) -->
+  <symbol id="ic-combo" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="46" fill="url(#gdop)"/>
+    <text x="50" y="74" text-anchor="middle" font-family="Georgia,'Times New Roman',serif"
+          font-size="74" font-weight="700" fill="#0a0e14">&#947;</text>
+  </symbol>
+</svg>
+
+<h1>Relativity — icon concepts</h1>
+<p class="sub">Toolbar strip is at the real KSP ApplicationLauncher size (38&times;38). Cards show each on dark + light, plus a 38px inset.</p>
+
+<h2>Toolbar preview (38px, as it'd sit in KSP)</h2>
+<div class="toolbar">
+  <svg><use href="#ic-gamma"/></svg>
+  <svg><use href="#ic-gamma-streak"/></svg>
+  <svg><use href="#ic-wall"/></svg>
+  <svg><use href="#ic-doppler"/></svg>
+  <svg><use href="#ic-clocks"/></svg>
+  <svg><use href="#ic-combo"/></svg>
+</div>
+
+<h2>Concepts</h2>
+<div class="grid">
+  <div class="card">
+    <p class="name">A · γ (mono)</p>
+    <p class="desc">The Lorentz-factor glyph — the signature of relativity. Cleanest, most legible at 38px. Top pick for the toolbar.</p>
+    <div class="swatches">
+      <div class="tile dark"><svg><use href="#ic-gamma"/></svg></div>
+      <div class="tile light"><svg><use href="#ic-gamma"/></svg></div>
+      <div class="mini"><svg><use href="#ic-gamma"/></svg></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="name">A2 · γ + light streak</p>
+    <p class="desc">Same γ with a faint diagonal light-streak for a hint of speed. Slightly livelier, still clean.</p>
+    <div class="swatches">
+      <div class="tile dark"><svg><use href="#ic-gamma-streak"/></svg></div>
+      <div class="tile light"><svg><use href="#ic-gamma-streak"/></svg></div>
+      <div class="mini"><svg><use href="#ic-gamma-streak"/></svg></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="name">B · light wall (asymptote)</p>
+    <p class="desc">A curve rising toward a <em>c</em> wall it can never cross — the mechanic itself, abstracted. Elegant; reads as "the barrier".</p>
+    <div class="swatches">
+      <div class="tile dark"><svg><use href="#ic-wall"/></svg></div>
+      <div class="tile light"><svg><use href="#ic-wall"/></svg></div>
+      <div class="mini"><svg><use href="#ic-wall"/></svg></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="name">C · doppler chevrons</p>
+    <p class="desc">Aft-red → fore-blue shift on forward chevrons. Colorful, pops on a SpaceDock thumbnail; busier at 38px.</p>
+    <div class="swatches">
+      <div class="tile dark"><svg><use href="#ic-doppler"/></svg></div>
+      <div class="tile light"><svg><use href="#ic-doppler"/></svg></div>
+      <div class="mini"><svg><use href="#ic-doppler"/></svg></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="name">D · two clocks (twin paradox)</p>
+    <p class="desc">One dial, two diverging hands — mission time vs crew time. Conceptually rich; a touch detailed for tiny sizes.</p>
+    <div class="swatches">
+      <div class="tile dark"><svg><use href="#ic-clocks"/></svg></div>
+      <div class="tile light"><svg><use href="#ic-clocks"/></svg></div>
+      <div class="mini"><svg><use href="#ic-clocks"/></svg></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="name">E · γ on doppler disc (combo)</p>
+    <p class="desc">γ over a blue→red disc. Identity + color in one — strongest as the large SpaceDock/logo thumbnail.</p>
+    <div class="swatches">
+      <div class="tile dark"><svg><use href="#ic-combo"/></svg></div>
+      <div class="tile light"><svg><use href="#ic-combo"/></svg></div>
+      <div class="mini"><svg><use href="#ic-combo"/></svg></div>
+    </div>
+  </div>
+</div>

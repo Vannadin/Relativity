@@ -1,0 +1,558 @@
+<!-- VAB 상대성 여행 플래너의 라이브 프로토타입: 슬라이더가 RelMath 수식으로 도착 시간·자원 소비를 실시간 계산하는 단일 파일 목업 -->
+<script src="relativity-math.js"></script>
+<style>
+  :root {
+    --bg: #0c1013;
+    --panel: #151b20;
+    --panel2: #1b2429;
+    --edge: #2c3a42;
+    --edge-lit: #3d545f;
+    --ink: #c7d6dc;
+    --ink-dim: #7f929b;
+    --accent: #4fd1c5;
+    --accent-dim: #2b6d68;
+    --warn: #ffb454;
+    --bad: #ff5d5d;
+    --ok: #6fe07f;
+    --wall: #ff5d5d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Consolas", "Menlo", "DejaVu Sans Mono", monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 16px;
+  }
+  .planner {
+    max-width: 720px;
+    margin: 0 auto;
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: 6px;
+    box-shadow: 0 0 0 1px #000 inset, 0 6px 24px rgba(0,0,0,.5);
+    overflow: hidden;
+  }
+  .titlebar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(180deg, #23313a, #171f24);
+    border-bottom: 1px solid var(--edge);
+    padding: 7px 12px;
+    letter-spacing: 1px;
+  }
+  .titlebar .t { color: var(--accent); font-weight: bold; }
+  .titlebar .scene {
+    color: var(--ink-dim);
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    padding: 1px 7px;
+    font-size: 11px;
+  }
+  .body { padding: 12px 14px 16px; }
+
+  section { margin-bottom: 14px; }
+  .lbl {
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 10px;
+    margin-bottom: 5px;
+  }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .row + .row { margin-top: 8px; }
+  .grow { flex: 1 1 140px; min-width: 120px; }
+
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 5px; background: var(--panel2);
+    border: 1px solid var(--edge); border-radius: 3px; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 13px; height: 18px; border-radius: 2px;
+    background: linear-gradient(180deg, #6ad, #37a); border: 1px solid #0a1418;
+    cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 13px; height: 18px; border-radius: 2px;
+    background: linear-gradient(180deg, #6ad, #37a); border: 1px solid #0a1418; cursor: pointer;
+  }
+  input[type=number], input.num {
+    background: #0a0e11; color: var(--ink); border: 1px solid var(--edge);
+    border-radius: 3px; padding: 3px 6px; width: 90px; font-family: inherit; font-size: 12px;
+  }
+  input.num:focus { border-color: var(--accent); outline: none; }
+
+  .val { color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .val b { color: var(--accent); }
+  .sub { color: var(--ink-dim); font-size: 11px; }
+
+  .toggle { display: inline-flex; border: 1px solid var(--edge); border-radius: 4px; overflow: hidden; }
+  .toggle button {
+    background: var(--panel2); color: var(--ink-dim); border: none; border-right: 1px solid var(--edge);
+    padding: 4px 11px; font-family: inherit; font-size: 12px; cursor: pointer;
+  }
+  .toggle button:last-child { border-right: none; }
+  .toggle button.on { background: var(--accent-dim); color: #eafffb; }
+  .toggle.sm button { padding: 3px 8px; font-size: 11px; }
+
+  /* light-wall gauge */
+  .gauge {
+    position: relative; height: 20px; background: #06090b;
+    border: 1px solid var(--edge); border-radius: 3px; overflow: hidden; margin-top: 4px;
+  }
+  .gauge .fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: linear-gradient(90deg, #2b6d68, #4fd1c5);
+    transition: width .05s linear;
+  }
+  .gauge .wall {
+    position: absolute; top: -2px; bottom: -2px; width: 2px; right: 0;
+    background: var(--wall); box-shadow: 0 0 6px var(--wall);
+  }
+  .gauge .wlbl {
+    position: absolute; right: 4px; top: 2px; font-size: 10px; color: var(--wall); letter-spacing: 1px;
+  }
+
+  .clocks { display: flex; gap: 18px; flex-wrap: wrap; }
+  .clock { flex: 1 1 130px; background: var(--panel2); border: 1px solid var(--edge); border-radius: 4px; padding: 8px 10px; }
+  .clock .k { color: var(--ink-dim); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .clock .v { font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .clock .v small { font-size: 11px; color: var(--ink-dim); }
+  .clock.delta .v { color: var(--accent); }
+
+  .banner {
+    display: none; background: #2a1c12; border: 1px solid var(--warn); border-radius: 4px;
+    padding: 8px 10px; color: var(--warn); margin-bottom: 12px; font-size: 12px;
+  }
+  .banner.show { display: block; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: right; padding: 4px 6px; border-bottom: 1px solid #10171b; }
+  th { color: var(--ink-dim); font-weight: normal; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
+  td:first-child, th:first-child { text-align: left; }
+  td input.num { width: 74px; text-align: right; }
+  .verdict.ok { color: var(--ok); }
+  .verdict.bad { color: var(--bad); }
+  .excl td { color: var(--ink-dim); }
+
+  details { margin-top: 6px; }
+  summary {
+    cursor: pointer; color: var(--accent); font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; padding: 4px 0; outline: none;
+  }
+  .exp-grid { display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 2px 14px; font-size: 12px; margin-top: 6px; }
+  .exp-grid .h { color: var(--ink-dim); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
+  .exp-grid .n { text-align: right; font-variant-numeric: tabular-nums; }
+  .hr { border: none; border-top: 1px solid var(--edge); margin: 14px 0; }
+  .foot { color: var(--ink-dim); font-size: 10px; margin-top: 4px; }
+</style>
+
+<div class="planner">
+  <div class="titlebar">
+    <span class="t">◇ TRIP PLANNER</span>
+    <span class="scene">VAB</span>
+  </div>
+  <div class="body">
+
+    <!-- ============ CONTROLS ============ -->
+    <section>
+      <div class="lbl">ΔV (ideal)</div>
+      <div class="row">
+        <div class="grow"><input type="range" id="dvSlider" min="0" max="10" step="0.001" value="1"></div>
+        <span class="val"><b id="dvC">1.000</b> c &nbsp;·&nbsp; <span class="sub" id="dvKms">299,792 km/s</span></span>
+      </div>
+    </section>
+
+    <section>
+      <div class="lbl">Max acceleration&nbsp; α = F/m</div>
+      <div class="row">
+        <div class="grow"><input type="range" id="aSlider" min="0.01" max="5" step="0.01" value="1"></div>
+        <span class="val"><b id="aG">1.00</b> g &nbsp;·&nbsp; <span class="sub" id="aMs">9.81 m/s²</span></span>
+      </div>
+    </section>
+
+    <section>
+      <div class="lbl">Target distance</div>
+      <div class="row">
+        <div class="toggle sm" id="modeToggle">
+          <button data-mode="slider" class="on">Slider</button>
+          <button data-mode="manual">Manual</button>
+        </div>
+        <div class="toggle sm" id="unitToggle">
+          <button data-unit="ly" class="on">ly</button>
+          <button data-unit="au">AU</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <select class="num" id="starPreset" style="width:auto; max-width:100%;">
+          <option value="">— pick a nearby star —</option>
+        </select>
+        <span class="sub">sets distance in ly</span>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="grow" id="distSliderWrap"><input type="range" id="distSlider" min="0.01" max="50" step="0.01" value="4.3"></div>
+        <input class="num" type="number" id="distNum" style="display:none;" step="0.1" min="0.001" value="4.3">
+        <span class="val"><b id="distVal">4.30</b> <span id="distUnit">ly</span></span>
+      </div>
+    </section>
+
+    <section>
+      <div class="lbl">Flight profile</div>
+      <div class="toggle" id="profileToggle">
+        <button data-profile="rendezvous" class="on">Rendezvous</button>
+        <button data-profile="flyby">Flyby</button>
+      </div>
+      <div class="foot" id="profileNote">Brake to rest at destination — ΔV splits accel / brake.</div>
+    </section>
+
+    <hr class="hr">
+
+    <!-- ============ TURNOVER BANNER ============ -->
+    <div class="banner" id="banner"></div>
+
+    <!-- ============ SIMPLE OUTPUTS ============ -->
+    <section>
+      <div class="lbl">Cruise β <span id="cruiseTag" class="sub"></span></div>
+      <div class="row">
+        <span class="val"><b id="betaVal">0.462</b> c</span>
+        <span class="sub" id="gammaVal">γ = 1.13</span>
+      </div>
+      <div class="gauge">
+        <div class="fill" id="gaugeFill"></div>
+        <div class="wall"></div>
+        <div class="wlbl">1c</div>
+      </div>
+    </section>
+
+    <section>
+      <div class="clocks">
+        <div class="clock"><div class="k">Mission clock</div><div class="v"><span id="missionYr">10.1</span> <small>yr</small></div></div>
+        <div class="clock"><div class="k">Crew clock</div><div class="v"><span id="crewYr">9.0</span> <small>yr</small></div></div>
+        <div class="clock delta"><div class="k">Δ crew saved</div><div class="v"><span id="deltaYr">1.1</span> <small>yr</small></div></div>
+      </div>
+    </section>
+
+    <!-- ============ RESOURCE TABLE ============ -->
+    <section>
+      <div class="lbl">Supplies (crew consumes for crew time = ×1/γ)</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Resource</th>
+            <th>Base rate /s</th>
+            <th>Onboard</th>
+            <th>Cruise ×1/γ</th>
+            <th>Trip total</th>
+            <th>Verdict</th>
+          </tr>
+        </thead>
+        <tbody id="resBody"></tbody>
+      </table>
+      <div class="foot">Base rate &amp; onboard are editable. Trip total = base rate × crew time.</div>
+    </section>
+
+    <!-- ============ EXPERT DETAIL ============ -->
+    <details id="expert">
+      <summary>▸ Expert detail</summary>
+      <div class="exp-grid" id="expGrid">
+        <div class="h">Phase</div><div class="h n">Crew (proper)</div><div class="h n">Mission (coord)</div><div class="h n">Distance</div>
+      </div>
+      <table style="margin-top:12px;">
+        <thead>
+          <tr><th>Excluded (not ×1/γ)</th><th>Rate</th><th></th><th></th><th>Mission total</th><th></th></tr>
+        </thead>
+        <tbody id="exclBody"></tbody>
+      </table>
+      <div class="foot" id="doseNote"></div>
+    </details>
+
+  </div>
+</div>
+
+<script>
+  // 상대성 플래너 UI 상태·렌더링 로직: 컨트롤 입력을 RelMath로 계산해 화면에 반영
+  "use strict";
+  var R = window.RelMath;
+  var LY = 9.4607e15, AU = 1.496e11, G0 = 9.81;
+
+  var state = {
+    dvC: 1.0,          // ΔV in multiples of c
+    aG: 1.0,           // α in g
+    distMode: "slider",
+    distUnit: "ly",
+    distVal: 4.3,      // in current unit
+    profile: "rendezvous"
+  };
+
+  // Editable resources: base rate per second, onboard amount, unit.
+  var resources = [
+    { name: "Food",  rate: 6.34e-6, onboard: 3000,  unit: "kg" },
+    { name: "O₂",    rate: 9.26e-6, onboard: 4500,  unit: "kg" },
+    { name: "Water", rate: 1.16e-5, onboard: 5000,  unit: "kg" }
+  ];
+
+  // Excluded resources (shown at mission/coordinate totals, ×1.00).
+  var excluded = [
+    { name: "Radiation dose", rate: 5.0e-9, unit: "Sv" }  // per coordinate second
+  ];
+
+  function fmt(x, d) {
+    if (!isFinite(x)) return "—";
+    d = d == null ? 2 : d;
+    return x.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function fmtYr(sec) { return fmt(sec / R.YEAR_S, sec / R.YEAR_S >= 100 ? 0 : 1); }
+  function distMeters() {
+    return state.distVal * (state.distUnit === "ly" ? LY : AU);
+  }
+
+  function buildResRows() {
+    var body = document.getElementById("resBody");
+    body.innerHTML = "";
+    resources.forEach(function (res, i) {
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td>' + res.name + '</td>' +
+        '<td><input class="num" type="number" data-kind="rate" data-i="' + i + '" step="1e-7" min="0" value="' + res.rate + '"></td>' +
+        '<td><input class="num" type="number" data-kind="onboard" data-i="' + i + '" step="1" min="0" value="' + res.onboard + '"> <span class="sub">' + res.unit + '</span></td>' +
+        '<td class="cruise n"></td>' +
+        '<td class="total n"></td>' +
+        '<td class="verdict"></td>';
+      body.appendChild(tr);
+    });
+    body.querySelectorAll("input").forEach(function (inp) {
+      inp.addEventListener("input", function () {
+        var i = +inp.dataset.i, kind = inp.dataset.kind;
+        resources[i][kind] = parseFloat(inp.value) || 0;
+        render();
+      });
+    });
+  }
+
+  function render() {
+    var deltaV = state.dvC * R.C;
+    var alpha = state.aG * G0;
+    var dist = distMeters();
+    var plan = R.planTrip(dist, deltaV, alpha, state.profile);
+
+    // --- control readouts ---
+    document.getElementById("dvC").textContent = fmt(state.dvC, 3);
+    document.getElementById("dvKms").textContent = fmt(deltaV / 1000, 0) + " km/s";
+    document.getElementById("aG").textContent = fmt(state.aG, 2);
+    document.getElementById("aMs").textContent = fmt(alpha, 2) + " m/s²";
+    document.getElementById("distVal").textContent = fmt(state.distVal, 2);
+    document.getElementById("distUnit").textContent = state.distUnit;
+
+    // --- turnover banner + which β to display ---
+    var banner = document.getElementById("banner");
+    var shownBeta, tag;
+    if (plan.turnover) {
+      shownBeta = plan.peakBeta;
+      banner.className = "banner show";
+      banner.innerHTML = "⚠ accel/decel-limited — cruise β not reached. " +
+        "Peak β = <b>" + fmt(plan.peakBeta, 3) + " c</b> " +
+        "(budgeted cruise would have been " + fmt(plan.cruiseBeta, 3) + " c). " +
+        "Turnover trajectory: accelerate to midpoint, then brake.";
+      tag = "(peak — not reached)";
+    } else {
+      shownBeta = plan.cruiseBeta;
+      banner.className = "banner";
+      banner.innerHTML = "";
+      tag = "";
+    }
+    document.getElementById("cruiseTag").textContent = tag;
+
+    // --- cruise β + gauge ---
+    var gShown = R.gamma(shownBeta);
+    document.getElementById("betaVal").textContent = fmt(shownBeta, 3);
+    document.getElementById("gammaVal").textContent = "γ = " + fmt(plan.turnover ? gShown : plan.cruiseGamma, 3);
+    document.getElementById("gaugeFill").style.width = Math.min(100, shownBeta * 100) + "%";
+
+    // --- clocks ---
+    var mission = plan.missionTime, crew = plan.crewTime;
+    document.getElementById("missionYr").textContent = fmtYr(mission);
+    document.getElementById("crewYr").textContent = fmtYr(crew);
+    document.getElementById("deltaYr").textContent = fmtYr(mission - crew);
+
+    // --- resource table (§4: total = base × crew time; cruise rate = base × 1/γ) ---
+    var gCruise = plan.turnover ? gShown : plan.cruiseGamma;
+    var rows = document.getElementById("resBody").children;
+    resources.forEach(function (res, i) {
+      var tr = rows[i];
+      var cruiseR = R.cruiseRate(res.rate, gCruise);
+      var total = R.resourceConsumed(res.rate, crew);
+      tr.querySelector(".cruise").textContent = cruiseR.toExponential(2) + " " + res.unit + "/s";
+      tr.querySelector(".total").textContent = fmt(total, total >= 100 ? 0 : 1) + " " + res.unit;
+      var v = tr.querySelector(".verdict");
+      if (total <= res.onboard) {
+        v.className = "verdict ok"; v.textContent = "✓";
+      } else {
+        v.className = "verdict bad";
+        v.textContent = "⚠ short by " + fmt(total - res.onboard, (total - res.onboard) >= 100 ? 0 : 1) + " " + res.unit;
+      }
+    });
+
+    // --- expert: phase breakdown ---
+    var g = document.getElementById("expGrid");
+    // clear all but header (first 4 children)
+    while (g.children.length > 4) g.removeChild(g.lastChild);
+    var rendez = state.profile === "rendezvous";
+
+    function phaseRow(label, tau, t, d) {
+      var cells = [
+        [label, ""],
+        [tau == null ? "—" : fmtYr(tau) + " yr", "n"],
+        [t == null ? "—" : fmtYr(t) + " yr", "n"],
+        [d == null ? "—" : fmt(d / LY, 4) + " ly", "n"]
+      ];
+      cells.forEach(function (c) {
+        var el = document.createElement("div");
+        el.textContent = c[0];
+        if (c[1]) el.className = c[1];
+        g.appendChild(el);
+      });
+    }
+
+    if (plan.turnover) {
+      // symmetric turnover legs; per-leg = half the totals
+      var legs = rendez ? 2 : 1;
+      phaseRow("Accel (to turnover)", plan.crewTime / legs, plan.missionTime / legs, dist / legs);
+      if (rendez) phaseRow("Decel (brake)", plan.crewTime / legs, plan.missionTime / legs, dist / legs);
+      phaseRow("Coast", 0, 0, 0);
+    } else {
+      var ph = plan.accel;
+      phaseRow("Accel", ph.tauA, ph.tA, ph.dA);
+      var coastT = plan.coastDist / (shownBeta * R.C);
+      var coastTau = coastT / gCruise;
+      phaseRow("Coast", coastTau, coastT, plan.coastDist);
+      if (rendez) phaseRow("Decel", ph.tauA, ph.tA, ph.dA);
+    }
+
+    // --- expert: excluded resources at mission (coordinate) totals, ×1.00 ---
+    var eb = document.getElementById("exclBody");
+    eb.innerHTML = "";
+    excluded.forEach(function (ex) {
+      var missionTotal = ex.rate * mission;   // coordinate-time total, NOT scaled
+      var tr = document.createElement("tr");
+      tr.className = "excl";
+      tr.innerHTML =
+        '<td>' + ex.name + ' <span class="sub">×1.00</span></td>' +
+        '<td>' + ex.rate.toExponential(1) + ' ' + ex.unit + '/s</td><td></td><td></td>' +
+        '<td>' + fmt(missionTotal, 3) + ' ' + ex.unit + '</td><td></td>';
+      eb.appendChild(tr);
+    });
+    document.getElementById("doseNote").textContent =
+      "Dose tracks mission time (×1.00), not crew time — a longer mission means more dose even as the crew ages less. \"Radiation, not starvation.\"";
+  }
+
+  // ---------------- wiring ----------------
+  function bindSlider(id, key, transform) {
+    var el = document.getElementById(id);
+    el.addEventListener("input", function () {
+      state[key] = transform ? transform(+el.value) : +el.value;
+      render();
+    });
+  }
+  bindSlider("dvSlider", "dvC");
+  bindSlider("aSlider", "aG");
+
+  var distSlider = document.getElementById("distSlider");
+  var distNum = document.getElementById("distNum");
+  function clearPreset() { var s = document.getElementById("starPreset"); if (s) s.value = ""; }
+  distSlider.addEventListener("input", function () { state.distVal = +distSlider.value; clearPreset(); syncDistInputs(); render(); });
+  distNum.addEventListener("input", function () { state.distVal = parseFloat(distNum.value) || 0; clearPreset(); render(); });
+
+  function syncDistInputs() {
+    distSlider.value = state.distVal;
+    distNum.value = state.distVal;
+  }
+
+  // mode toggle: slider <-> manual
+  document.querySelectorAll("#modeToggle button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.distMode = b.dataset.mode;
+      document.querySelectorAll("#modeToggle button").forEach(function (x) { x.classList.toggle("on", x === b); });
+      var manual = state.distMode === "manual";
+      document.getElementById("distSliderWrap").style.display = manual ? "none" : "";
+      distNum.style.display = manual ? "" : "none";
+      syncDistInputs();
+    });
+  });
+
+  // unit toggle: ly <-> AU (convert the numeric value so the physical distance is preserved)
+  document.querySelectorAll("#unitToggle button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var newUnit = b.dataset.unit;
+      if (newUnit === state.distUnit) return;
+      // convert current value to metres, then to new unit
+      var meters = state.distVal * (state.distUnit === "ly" ? LY : AU);
+      state.distUnit = newUnit;
+      state.distVal = meters / (newUnit === "ly" ? LY : AU);
+      // adjust slider range to sensible bounds per unit
+      if (newUnit === "au") { distSlider.min = 100; distSlider.max = 300000; distSlider.step = 100; }
+      else { distSlider.min = 0.01; distSlider.max = 50; distSlider.step = 0.01; }
+      document.querySelectorAll("#unitToggle button").forEach(function (x) { x.classList.toggle("on", x === b); });
+      syncDistInputs();
+      render();
+    });
+  });
+
+  // profile toggle
+  document.querySelectorAll("#profileToggle button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.profile = b.dataset.profile;
+      document.querySelectorAll("#profileToggle button").forEach(function (x) { x.classList.toggle("on", x === b); });
+      document.getElementById("profileNote").textContent = state.profile === "rendezvous"
+        ? "Brake to rest at destination — ΔV splits accel / brake."
+        : "One-way — all ΔV accelerates, no braking budget.";
+      render();
+    });
+  });
+
+  // Nearby star systems — real-world distances (parallax → ly).
+  var STARS = [
+    { n: "Proxima Centauri",  ly: 4.25 },
+    { n: "α Centauri A",  ly: 4.39 },
+    { n: "Luhman 16",         ly: 6.50 },
+    { n: "Epsilon Eridani",   ly: 10.50 },
+    { n: "Tau Ceti",          ly: 11.91 },
+    { n: "Epsilon Indi",      ly: 12.05 },
+    { n: "40 Eridani (Keid)", ly: 16.35 },
+    { n: "Delta Pavonis",     ly: 19.89 },
+    { n: "HD 219134",         ly: 21.34 },
+    { n: "Vega",              ly: 25.04 },
+    { n: "Fomalhaut",         ly: 25.13 },
+    { n: "61 Virginis",       ly: 27.84 },
+    { n: "AU Microscopii",    ly: 31.68 },
+    { n: "TRAPPIST-1",        ly: 40.66 },
+    { n: "HD 69830",          ly: 41.03 }
+  ];
+  var starSel = document.getElementById("starPreset");
+  STARS.forEach(function (s) {
+    var o = document.createElement("option");
+    o.value = s.ly;
+    o.textContent = s.n + " · " + s.ly.toFixed(2) + " ly";
+    starSel.appendChild(o);
+  });
+  starSel.addEventListener("change", function () {
+    if (!starSel.value) return;
+    if (state.distUnit !== "ly") {                 // presets are in ly — force the ly unit + bounds
+      state.distUnit = "ly";
+      distSlider.min = 0.01; distSlider.max = 50; distSlider.step = 0.01;
+      document.querySelectorAll("#unitToggle button").forEach(function (x) {
+        x.classList.toggle("on", x.dataset.unit === "ly");
+      });
+    }
+    state.distVal = parseFloat(starSel.value);
+    syncDistInputs();
+    render();
+  });
+
+  buildResRows();
+  render();
+</script>

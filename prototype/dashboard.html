@@ -1,0 +1,382 @@
+<!-- 상대성 mod 인플라이트 대시보드 인터랙티브 목업 — 슬라이더가 RelMath 실제 수식으로 리드아웃을 구동 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relativity Dashboard — mock</title>
+<style>
+  :root {
+    --panel-bg: rgba(12, 18, 24, 0.88);
+    --panel-border: rgba(120, 200, 255, 0.35);
+    --header-bg: rgba(24, 40, 56, 0.95);
+    --ink: #cfe8ff;
+    --ink-dim: #7fa0b8;
+    --accent: #4fd0ff;
+    --active: #6fe36f;
+    --warn: #ff8c42;
+    --warp: #c78bff;
+    --bar-empty: rgba(255, 255, 255, 0.08);
+    --bar-fill: linear-gradient(90deg, #2a8fd0, #4fd0ff);
+    --wall: #ff5a5a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: #05080b radial-gradient(circle at 30% 10%, #0d1a26 0%, #05080b 70%);
+    color: var(--ink);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    min-height: 100vh;
+  }
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 16px 60px;
+  }
+  /* ---- controls ---- */
+  .controls {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 28px;
+    font-size: 13px;
+  }
+  .controls h2 {
+    margin: 0 0 12px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    font-weight: 600;
+  }
+  .ctl-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 10px 0;
+    flex-wrap: wrap;
+  }
+  .ctl-row label {
+    flex: 0 0 130px;
+    color: var(--ink-dim);
+  }
+  .ctl-row input[type="range"] { flex: 1 1 160px; min-width: 120px; accent-color: var(--accent); }
+  .ctl-row input[type="number"] { flex: 1 1 100px; min-width: 90px; }
+  input[type="number"] {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--ink);
+    border-radius: 4px;
+    padding: 4px 6px;
+    font: inherit;
+  }
+  .ctl-val { flex: 0 0 84px; text-align: right; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .toggles { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 6px; }
+  .toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--ink); }
+  .toggle input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+  /* ---- panel ---- */
+  .panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), inset 0 0 60px rgba(40, 90, 130, 0.08);
+    overflow: hidden;
+    backdrop-filter: blur(3px);
+    max-width: 420px;
+    margin: 0 auto;
+  }
+  .panel.warp { border-color: rgba(199, 139, 255, 0.5); max-width: 300px; }
+  .panel.idle { border-color: rgba(120, 140, 160, 0.3); max-width: 360px; }
+
+  .titlebar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--header-bg);
+    padding: 8px 12px;
+    cursor: grab;
+    border-bottom: 1px solid var(--panel-border);
+    user-select: none;
+  }
+  .titlebar .grip { color: var(--ink-dim); letter-spacing: 1px; }
+  .titlebar .title {
+    font-weight: 700;
+    letter-spacing: 3px;
+    font-size: 13px;
+    flex: 1;
+  }
+  .status-dot { font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .status-dot.active { color: var(--active); }
+  .status-dot.warp { color: var(--warp); }
+  .status-dot.idle { color: var(--ink-dim); }
+
+  .body { padding: 12px 14px; font-size: 14px; }
+
+  .row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 5px 0;
+    line-height: 1.5;
+  }
+  .row .k { flex: 0 0 128px; color: var(--ink-dim); }
+  .row .v { flex: 1 1 auto; font-variant-numeric: tabular-nums; }
+  .row .v .dim { color: var(--ink-dim); }
+  .row .v .pct { color: var(--accent); }
+  .row .v .delta { color: var(--warn); }
+  .row.sep { border-top: 1px dashed rgba(255,255,255,0.12); margin-top: 6px; padding-top: 8px; }
+  .cue { color: var(--warn); font-weight: 700; margin-left: 6px; }
+  .cue.hidden { display: none; }
+
+  /* ---- light-wall gauge ---- */
+  .gauge {
+    position: relative;
+    height: 14px;
+    background: var(--bar-empty);
+    border-radius: 3px;
+    margin-top: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .gauge .fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: var(--bar-fill);
+    border-radius: 2px 0 0 2px;
+    transition: width 0.08s linear;
+  }
+  .gauge .wall {
+    position: absolute;
+    right: 0; top: -2px; bottom: -2px;
+    width: 3px;
+    background: var(--wall);
+    box-shadow: 0 0 8px var(--wall);
+  }
+  .gauge .ticks {
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(90deg, transparent 0, transparent 9%, rgba(255,255,255,0.06) 9%, rgba(255,255,255,0.06) calc(9% + 1px));
+    pointer-events: none;
+  }
+  .gauge-caption { font-size: 11px; color: var(--ink-dim); margin-top: 3px; display: flex; justify-content: space-between; }
+
+  .expert-only.hidden { display: none; }
+  .big-speed { font-size: 24px; font-weight: 700; color: var(--warp); letter-spacing: 1px; }
+  .idle-msg { color: var(--ink-dim); font-style: italic; padding: 4px 0; }
+  .note { max-width: 420px; margin: 16px auto 0; font-size: 11px; color: var(--ink-dim); line-height: 1.6; text-align: center; }
+</style>
+
+<div class="wrap">
+  <div class="controls">
+    <h2>Sandbox controls</h2>
+    <div class="ctl-row">
+      <label for="beta">β (speed, /c)</label>
+      <input type="range" id="beta" min="0" max="0.999" step="0.001" value="0.923">
+      <span class="ctl-val" id="beta-val">0.923</span>
+    </div>
+    <div class="ctl-row">
+      <label for="thrust">nominal thrust</label>
+      <input type="range" id="thrust" min="10" max="500" step="1" value="154">
+      <span class="ctl-val" id="thrust-val">154 kN</span>
+    </div>
+    <div class="ctl-row">
+      <label for="mission">mission elapsed</label>
+      <input type="range" id="mission" min="0" max="40" step="0.1" value="12.4">
+      <span class="ctl-val" id="mission-val">12.4 yr</span>
+    </div>
+    <div class="ctl-row">
+      <label for="accel">accel α</label>
+      <input type="range" id="accel" min="0.05" max="5" step="0.05" value="1.5">
+      <span class="ctl-val" id="accel-val">1.50 g</span>
+    </div>
+    <div class="ctl-row">
+      <label for="remain">remaining to target</label>
+      <input type="range" id="remain" min="0.01" max="12" step="0.01" value="2">
+      <span class="ctl-val" id="remain-val">2.00 ly</span>
+    </div>
+    <div class="ctl-row">
+      <label for="warpspeed">warp speed</label>
+      <input type="number" id="warpspeed" min="0" step="0.1" value="23.4">
+      <span class="ctl-val">×c</span>
+    </div>
+    <div class="toggles">
+      <label class="toggle"><input type="checkbox" id="warp"> under warp</label>
+      <label class="toggle"><input type="checkbox" id="expert"> Expert mode</label>
+      <label class="toggle"><input type="checkbox" id="kerbalism" checked> Kerbalism installed</label>
+    </div>
+  </div>
+
+  <div id="panel-mount"></div>
+  <div class="note">Live prototype — sliders drive the readout through the mod's real formulas (RelMath: γ, 1/γ³ thrust, 1/γ resource). Panel routing follows dashboard.md §5.</div>
+</div>
+
+<script src="relativity-math.js"></script>
+<script>
+  "use strict";
+
+  var betaMin = 0.01, betaSane = 0.995, LY = 9.4607e15, G0 = 9.80665;
+
+  var el = {
+    beta: document.getElementById("beta"),
+    betaVal: document.getElementById("beta-val"),
+    thrust: document.getElementById("thrust"),
+    thrustVal: document.getElementById("thrust-val"),
+    mission: document.getElementById("mission"),
+    missionVal: document.getElementById("mission-val"),
+    accel: document.getElementById("accel"),
+    accelVal: document.getElementById("accel-val"),
+    remain: document.getElementById("remain"),
+    remainVal: document.getElementById("remain-val"),
+    warpspeed: document.getElementById("warpspeed"),
+    warp: document.getElementById("warp"),
+    expert: document.getElementById("expert"),
+    kerbalism: document.getElementById("kerbalism"),
+    mount: document.getElementById("panel-mount")
+  };
+
+  function fmt(x, d) { return x.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+
+  // Non-linear tail gauge fill (§2): 0→1c bar where the last approach to c never completes.
+  // Below 0.9c it is ~linear; above, compress the remaining travel so the fill asymptotes short of the wall.
+  function gaugeFill(beta) {
+    var maxFill = 0.985; // never reaches the hard wall at 1.0
+    if (beta <= 0.9) return (beta / 0.9) * 0.9 * maxFill;
+    // map 0.9..1.0 into 0.9..1.0 of the bar, but with a compressing (log-ish) tail
+    var t = (beta - 0.9) / 0.1;            // 0..1 across the last stretch
+    var eased = 1 - Math.pow(1 - t, 0.35); // fast then flattening — approaches 1 only at β→c
+    return (0.9 + 0.1 * eased) * maxFill;
+  }
+
+  function warpPanel(speed) {
+    var hasSpeed = isFinite(speed) && speed > 0;
+    return '' +
+      '<div class="panel warp">' +
+        '<div class="titlebar">' +
+          '<span class="grip">⋮⋮</span>' +
+          '<span class="title">WARP</span>' +
+          '<span class="status-dot warp">◆</span>' +
+        '</div>' +
+        '<div class="body">' +
+          '<div class="row"><span class="k">Speed</span><span class="v big-speed">' +
+            (hasSpeed ? fmt(speed, 1) + ' c' : 'WARP') +
+          '</span></div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function idlePanel(msg) {
+    return '' +
+      '<div class="panel idle">' +
+        '<div class="titlebar">' +
+          '<span class="grip">⋮⋮</span>' +
+          '<span class="title">RELATIVITY</span>' +
+          '<span class="status-dot idle">○</span>' +
+        '</div>' +
+        '<div class="body">' +
+          '<div class="idle-msg">' + msg + '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function activePanel(st, nominalKN, missionYr, expert, alphaMs, remainingM, kerbalism) {
+    var g = st.gamma;
+    var tf = RelMath.thrustFactor(g);   // 1/γ³ — thrust & brake authority
+    var rf = RelMath.resourceFactor(g); // 1/γ — life support
+    var af = RelMath.attitudeFactor(g); // 1/γ — attitude / rotation rate (§2.7)
+    var effKN = nominalKN * tf;
+    var crewYr = missionYr / g;
+    var deltaYr = crewYr - missionYr;
+
+    var fillPct = gaugeFill(st.beta) * 100;
+    // decel-now = turnover point (§4): remaining ≤ braking distance (+margin), via the real formula
+    var dBrakeLy = RelMath.brakingDistance(st.beta, alphaMs) / LY;
+    var decelNow = RelMath.decelNow(remainingM, st.beta, alphaMs);
+
+    var expertRows = '' +
+      '<div class="row sep expert-only' + (expert ? '' : ' hidden') + '">' +
+        '<span class="k">γ (Lorentz)</span><span class="v">' + fmt(g, 2) + '</span></div>' +
+      '<div class="row expert-only' + (expert ? '' : ' hidden') + '">' +
+        '<span class="k">Life support</span><span class="v">×' + fmt(rf, 2) + ' <span class="dim">(slowed)</span></span></div>' +
+      // Radiation dose row: only when Kerbalism (the only radiation model) is installed (dashboard.md §1)
+      (kerbalism ?
+        '<div class="row expert-only' + (expert ? '' : ' hidden') + '">' +
+          '<span class="k">Radiation dose</span><span class="v">×1.00 <span class="dim">(not dilated)</span></span></div>'
+        : '') +
+      '<div class="row expert-only' + (expert ? '' : ' hidden') + '">' +
+        '<span class="k">Turn rate</span><span class="v">×' + fmt(af, 2) + ' <span class="dim">(attitude slowed)</span></span></div>';
+
+    return '' +
+      '<div class="panel">' +
+        '<div class="titlebar">' +
+          '<span class="grip">⋮⋮</span>' +
+          '<span class="title">RELATIVITY</span>' +
+          '<span class="status-dot active">● ACTIVE</span>' +
+        '</div>' +
+        '<div class="body">' +
+          '<div class="row"><span class="k">Speed</span><span class="v">' + fmt(st.beta, 3) + ' c</span></div>' +
+          '<div class="gauge">' +
+            '<div class="fill" style="width:' + fillPct.toFixed(2) + '%"></div>' +
+            '<div class="ticks"></div>' +
+            '<div class="wall" title="light wall (1 c)"></div>' +
+          '</div>' +
+          '<div class="gauge-caption"><span>0</span><span>1 c ▏ wall</span></div>' +
+
+          '<div class="row"><span class="k">Thrust</span><span class="v">' +
+            fmt(effKN, 1) + ' <span class="dim">/ ' + fmt(nominalKN, 0) + ' kN</span> ' +
+            '<span class="pct">(' + fmt(tf * 100, 1) + '%)</span></span></div>' +
+
+          '<div class="row"><span class="k">Brake authority</span><span class="v">' +
+            '<span class="pct">' + fmt(tf * 100, 1) + '%</span>' +
+            '<span class="dim"> · turnover ' + fmt(dBrakeLy, 2) + ' ly</span>' +
+            '<span class="cue' + (decelNow ? '' : ' hidden') + '">⚠ decel now</span></span></div>' +
+
+          '<div class="row sep"><span class="k">Mission</span><span class="v">' + fmt(missionYr, 1) + ' yr</span></div>' +
+          '<div class="row"><span class="k">Crew</span><span class="v">' + fmt(crewYr, 1) + ' yr ' +
+            '<span class="delta">(' + (deltaYr <= 0 ? '−' : '+') + fmt(Math.abs(deltaYr), 1) + ')</span></span></div>' +
+
+          expertRows +
+        '</div>' +
+      '</div>';
+  }
+
+  function render() {
+    var beta = parseFloat(el.beta.value);
+    var nominalKN = parseFloat(el.thrust.value);
+    var missionYr = parseFloat(el.mission.value);
+    var alphaG = parseFloat(el.accel.value);
+    var alphaMs = alphaG * G0;
+    var remainingM = parseFloat(el.remain.value) * LY;
+    var warpSpeed = parseFloat(el.warpspeed.value);
+    var underWarp = el.warp.checked;
+    var expert = el.expert.checked;
+    var kerbalism = el.kerbalism.checked;
+
+    // live control readouts
+    el.betaVal.textContent = fmt(beta, 3);
+    el.thrustVal.textContent = fmt(nominalKN, 0) + " kN";
+    el.missionVal.textContent = fmt(missionYr, 1) + " yr";
+    el.accelVal.textContent = fmt(alphaG, 2) + " g";
+    el.remainVal.textContent = fmt(parseFloat(el.remain.value), 2) + " ly";
+
+    // route on state (dashboard.md §5) via the real guard evaluator
+    var st = RelMath.evaluate(beta, underWarp, { betaMin: betaMin, betaSane: betaSane });
+
+    var html;
+    if (underWarp) {
+      html = warpPanel(warpSpeed);                    // warp on → collapsed WARP panel
+    } else if (beta <= betaMin) {
+      html = idlePanel("off (sub-relativistic)");     // β ≤ betaMin
+    } else if (beta >= betaSane) {
+      html = idlePanel("disabled — implausible β");    // β ≥ betaSane
+    } else {
+      // st.active is true here; use the guarded state for the full dashboard
+      html = activePanel(st, nominalKN, missionYr, expert, alphaMs, remainingM, kerbalism);
+    }
+    el.mount.innerHTML = html;
+  }
+
+  ["input", "change"].forEach(function (evt) {
+    [el.beta, el.thrust, el.mission, el.accel, el.remain, el.warpspeed, el.warp, el.expert, el.kerbalism].forEach(function (node) {
+      node.addEventListener(evt, render);
+    });
+  });
+  render();
+</script>

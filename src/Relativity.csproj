@@ -1,0 +1,36 @@
+<!-- KSP 1.12.x 플러그인 빌드 정의: net48/C#7.3, KSPBuildTools로 스톡 Managed 참조 -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>        <!-- KSP runs Mono 4.x -->
+    <LangVersion>7.3</LangVersion>                  <!-- Unity 2019.4 ceiling -->
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>Relativity</AssemblyName>
+    <RootNamespace>Relativity</RootNamespace>
+    <Version>0.1.0</Version>                        <!-- must stay >=2 parts: KSPBuildTools splits FileVersion for [KSPAssembly] -->
+    <Deterministic>true</Deterministic>
+
+    <!-- Output the DLL into the project-local mod-staging folder only.
+         KSPBT_GameRoot (set per-machine in Relativity.csproj.user) is used solely to
+         RESOLVE the stock Managed/ DLLs for compilation — the build never writes there. -->
+    <KSPBT_ModRoot>$(MSBuildProjectDirectory)/../GameData/$(MSBuildProjectName)</KSPBT_ModRoot>
+    <KSPBT_ModPluginFolder>Plugins</KSPBT_ModPluginFolder>
+
+    <!-- Standalone, mod-agnostic: no dependencies. Never let CKAN touch the shared KSP install. -->
+    <KSPBT_InstallCKANDependencies>false</KSPBT_InstallCKANDependencies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="KSPBuildTools" Version="1.1.1" />
+  </ItemGroup>
+
+  <!-- Harmony is a hard dependency (the Kerbalism resource-dilation adapter patches Rule.Execute).
+       Emits a [KSPAssemblyDependency] so KSP flags a missing-Harmony install clearly. -->
+  <ItemGroup>
+    <ModReference Include="0Harmony">
+      <DLLPath>GameData/000_Harmony/0Harmony.dll</DLLPath>
+      <CKANIdentifier>Harmony2</CKANIdentifier>
+    </ModReference>
+  </ItemGroup>
+
+</Project>
