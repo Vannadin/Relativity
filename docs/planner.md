@@ -1,4 +1,4 @@
-# Relativity — VAB trip planner (design spec)
+# Relativity - VAB trip planner (design spec)
 
 > A design surface of the `Relativity` mod, alongside [design.md](design.md) (mechanic) and
 > [dashboard.md](dashboard.md) (in-flight HUD). This is the **editor-scene** companion: you design a
@@ -7,7 +7,7 @@
 
 **What it is.** An in-editor planner. From the vessel's stock ΔV and max acceleration, a target
 distance, and a flight profile, it computes the **arrival time** (mission clock + crew clock) and the
-**resource consumption** for the trip — using the *same* special-relativity physics the flight layer
+**resource consumption** for the trip - using the *same* special-relativity physics the flight layer
 applies (design.md §2.1/§2.2), so the plan and the actual flight agree.
 
 **Why it belongs here.** The flight dashboard shows the mechanic *while* you fly; the planner lets you
@@ -22,7 +22,7 @@ Read from the editor (all stock/framework touchpoints are `// VERIFY:` at build 
 
 | Input | Source | Notes |
 |-------|--------|-------|
-| ΔV (ideal) | stock ΔV readout (`VesselDeltaV` / stage ΔV app) | Newtonian `v_e·ln(MR)` — exactly what the relativistic map needs (§3). |
+| ΔV (ideal) | stock ΔV readout (`VesselDeltaV` / stage ΔV app) | Newtonian `v_e·ln(MR)` - exactly what the relativistic map needs (§3). |
 | Max acceleration `α` | Σ active-engine thrust / vessel mass | This is the vessel's *proper* acceleration `F/m` (§3). MVP treats the vessel as one interstellar stage; multi-stage refinement deferred. |
 | Onboard resource amounts | ship part resources | For the consumption / shortfall check (§4). |
 | Nominal consumption rates | installed LS framework (Kerbalism / stock / CRP) | The fiddliest source; framework-specific. MVP may approximate from crew count × per-kerbal LS rate. `// VERIFY:` per framework. |
@@ -31,13 +31,13 @@ Read from the editor (all stock/framework touchpoints are `// VERIFY:` at build 
 
 - **Target distance.** A field that **toggles slider ↔ manual entry** (the stock KSP input widget
   pattern), with a **ly / AU** unit toggle. Plus an optional **"pick a game body"** dropdown (auto
-  mode) that fills the distance from a selected body — used when a planet pack is installed;
+  mode) that fills the distance from a selected body - used when a planet pack is installed;
   planet-agnostic manual entry is always available. All three modes ship.
 - **Flight profile toggle.**
-  - **Rendezvous** (brake to rest at the destination) — ΔV splits between accelerate and brake.
-  - **Flyby** (one-way, all ΔV to accelerate) — no braking budget.
+  - **Rendezvous** (brake to rest at the destination) - ΔV splits between accelerate and brake.
+  - **Flyby** (one-way, all ΔV to accelerate) - no braking budget.
 
-## 3. Model — the physics
+## 3. Model - the physics
 
 Let `ΔV` be the stock ideal ΔV, `c` the speed of light, `α = F/m` the max (proper) acceleration.
 
@@ -63,7 +63,7 @@ caveats (it is deliberately a preview, not a promise):
 The ΔV budget splits by profile:
 
 - **Flyby:** `β_cruise = tanh(ΔV / c)`.
-- **Rendezvous:** `β_cruise = tanh(ΔV / (2c))` — half the ΔV accelerates, half brakes.
+- **Rendezvous:** `β_cruise = tanh(ΔV / (2c))` - half the ΔV accelerates, half brakes.
 
 `γ_cruise = 1/√(1 − β_cruise²)`.
 
@@ -91,14 +91,14 @@ distance        d_a = (c²/α)·(γ_cruise − 1)
 - **Rendezvous:** a symmetric decel phase adds another `τ_a`, `t_a`, `d_a`.
 
 `α` matters here exactly as requested: a low-thrust ship spends longer (and more distance) getting up to
-cruise, which lengthens the trip and — because the crew clock runs during accel too — changes the
+cruise, which lengthens the trip and - because the crew clock runs during accel too - changes the
 resource total.
 
-**Constant-α caveat.** `α = F/m` is *not* constant during a burn — mass drops (and, under the flight
+**Constant-α caveat.** `α = F/m` is *not* constant during a burn - mass drops (and, under the flight
 model, `F` is being cut by γ³), so a single `α` is a first-order approximation. The `τ_a = ΔV_accel/α`
 identity holds only for constant α; compute `τ_a` from the accel-phase ΔV directly and reserve α for the
 `t_a`/`d_a` *shape*. For a high mass-ratio stage the accel-phase *distance* `d_a` can be off by a large
-factor — acceptable for a preview, but numerically integrate it if the coast split needs to be trustworthy.
+factor - acceptable for a preview, but numerically integrate it if the coast split needs to be trustworthy.
 
 ### 3.3 Coast phase and totals
 
@@ -112,9 +112,9 @@ proper time      τ_c = t_c / γ_cruise
 - **Mission (coordinate) time**  `T = (1 or 2)·t_a + t_c`
 - **Crew (proper) time**         `τ = (1 or 2)·τ_a + τ_c`
 
-**Edge case — distance too short to reach cruise β** (`D_coast < 0`): the accel (+decel) phases already
+**Edge case - distance too short to reach cruise β** (`D_coast < 0`): the accel (+decel) phases already
 consume the whole distance, so the ship never reaches `β_cruise`. The planner flags this
-("accel/decel-limited — cruise β not reached") and solves the turnover trajectory (accelerate to the
+("accel/decel-limited - cruise β not reached") and solves the turnover trajectory (accelerate to the
 midpoint, then brake) instead of the three-phase model. This is the interstellar analogue of a
 brachistochrone transfer.
 
@@ -133,10 +133,10 @@ i.e. the crew only consumes for the time *it* experiences. Show, per resource:
 - **trip total** = `base_rate_i × τ`, compared against the onboard amount,
 - a **shortfall warning** when `trip total > onboard` ("supplies insufficient: short by X").
 
-Exclusions follow design.md §2.2 — engine propellant/oxidizer, ElectricCharge, and radiation dose are
+Exclusions follow design.md §2.2 - engine propellant/oxidizer, ElectricCharge, and radiation dose are
 **not** scaled and (except propellant, which the trip doesn't re-spend) are shown at their coordinate-
 time totals. The dose contrast (`×1.00`) is worth surfacing here too: a longer *mission* time means
-more dose even though the crew ages less — the design's "radiation, not starvation" point, made at
+more dose even though the crew ages less - the design's "radiation, not starvation" point, made at
 design time.
 
 ## 5. Outputs / layout
@@ -144,9 +144,9 @@ design time.
 Editor-scene window, opened from an **ApplicationLauncher** button (VERIFY: launcher in editor). Mirror
 the flight dashboard's Simple/Expert split (dashboard.md) for consistency:
 
-**Simple** — cruise `β` (light-wall style), mission clock, crew clock + Δ, and a per-resource
+**Simple** - cruise `β` (light-wall style), mission clock, crew clock + Δ, and a per-resource
 "lasts / short by" line.
-**Expert** adds — `γ_cruise`, the accel/coast/decel time+distance breakdown, cruise consumption rate
+**Expert** adds - `γ_cruise`, the accel/coast/decel time+distance breakdown, cruise consumption rate
 `×1/γ`, and the dose `×1.00` contrast row.
 
 ```
@@ -178,6 +178,6 @@ the flight dashboard's Simple/Expert split (dashboard.md) for consistency:
 
 ## Related
 
-- [design.md](design.md) — the mechanic the planner previews (§2.1 thrust/γ³, §2.2 resource/γ, §5 config)
-- [dashboard.md](dashboard.md) — the in-flight HUD this mirrors; §4 brake cue the planner can feed
+- [design.md](design.md) - the mechanic the planner previews (§2.1 thrust/γ³, §2.2 resource/γ, §5 config)
+- [dashboard.md](dashboard.md) - the in-flight HUD this mirrors; §4 brake cue the planner can feed
 - New source (build phase): `TripPlan.cs` (pure trip math), `EditorPlanner.cs` (VAB window + stat reads)

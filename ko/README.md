@@ -1,96 +1,99 @@
-# Relativity — KSP용 아광속 특수상대성 게임플레이 레이어
+# Relativity
 
-특수상대성의 아광속 절반을 더해 주는 독립형 **KSP 1.12.x** 게임플레이 모드입니다. 어떤 행성 팩에도
-묶이지 않습니다.
+KSP 1.12.x용 특수상대성 모드입니다. 다른 모드의 드라이브가 함선을 광속 근처까지 밀어붙이면, 그
+속도가 마땅히 치러야 할 값을 치르게 만듭니다. 추력은 더 이상 가속으로 이어지지 않고, 승무원은
+미션 시계보다 천천히 나이 들고, v1.0부터는 창밖 풍경도 그에 맞게 바뀝니다. 독립형이고, 어떤 행성
+팩에도 묶이지 않습니다.
 
-> **상태: v0.1.0-beta.** 핵심 상대론 비행은 인게임에서 검증됐고, 몇몇 통합 기능은 컴파일은
-> 깔끔하지만 아직 플레이 테스트 전입니다 (기능별 상태는 [`CHANGELOG.md`](../CHANGELOG.md) 참고).
-> 긴 상대론 미션 전에는 세이브를 백업하세요.
+이 모드는 힘과 소모율만 조절합니다. 물리 적분기는 절대 건드리지 않으므로 Principia 위에서도
+스톡에서와 똑같이 동작합니다.
 
-## 개요
+현재 상태는 v1.0.0입니다. 핵심 비행 레이어와 비주얼 레이어는 인게임 검증이 끝났습니다. 통합
+기능 몇 개(두 시계 카운터, 여행 플래너, Kerbalism 지연, RP-1)는 컴파일은 깔끔하지만 아직 제대로
+된 플레이스루를 못 거쳤습니다. 기능별 상태는 [`CHANGELOG.md`](../CHANGELOG.md)에 있습니다. 긴
+상대론 미션 전에는 세이브를 백업하세요.
 
-아광속 특수상대성 **게임플레이** 레이어입니다 (Tier 0, 비주얼 없음). `c`에 가까워지면.
+## 아이디어
 
-- **유효 추력이 1/γ³로 줄어듭니다.** 빛이 다가갈 수는 있어도 넘을 수 없는 자연스러운 벽이 됩니다.
-  추진제는 정상 속도로 계속 타므로, 줄어드는 것은 연료 계산이 아니라 효율입니다.
-- **고유 시간 자원 소모가 1/γ로 느려집니다.** 빠른 승무원은 더 천천히 나이 들고 생명유지 자원을 덜
-  쓰는 반면, 방사선 피폭량은 좌표 시간 기준으로 그대로 흐릅니다.
+광속 근처에서는 두 가지가 서로 반대로 당깁니다. 유효 추력은 1/γ³로 떨어집니다. 엔진은 추진제를
+평소 속도로 계속 태우지만 순 추력이 줄어들어서, c는 다가갈 수는 있어도 넘을 수 없는 벽이 됩니다.
+감속도 똑같이 무력해지는데, 사실 비행 방식을 바꾸는 건 이쪽입니다. 도착 감속을 터무니없이 일찍
+시작해야 하거든요.
 
-이 모드는 **힘과 소모율만 조절**합니다. 적분기는 건드리지 않으므로 **Principia와 안전하게** 공존하고
-스톡 물리에서도 동일하게 동작합니다.
+한편 승무원의 시계는 1/γ로 느리게 가고, 생명유지 자원은 승무원의 시계를 따라 소모됩니다. 그래서
+빠른 승무원이 더 오래 버팁니다. 50년짜리 순항이 식량으로는 24년치일 수 있습니다. 함정은
+방사선입니다. 피폭은 바깥에서 오는 것이라 좌표 시간으로 쌓이므로, 여행을 제한하는 건 굶주림이
+아니라 방사선입니다. 순항 속도는 그 긴장 속에서 고르게 됩니다.
 
-## 기능
+## 들어 있는 것
 
-- **상대론 추력** — 엔진의 순 추력이 `F/γ³`가 됩니다 (비행 검증 완료).
-- **비행 대시보드** — 스톡 툴바에 β, γ, 유효 추력 %, 자원 소모율 %를 표시합니다.
-- **두 시계 카운터** — 함선별 미션(좌표) 시간 대 승무원(고유, τ=∫dt/γ) 시간.
-- **VAB/SPH 여행 플래너** — 순항 β, 미션 대 승무원 시간, 가속/관성 구간 분해를 미리 보여줍니다.
-- **Kerbalism 자원 지연** — 생명유지 자원을 고유 시간(×1/γ)으로 소모하고, 피폭량은 좌표 시간 유지.
-- **자세 제어 ×1/γ** — 리액션 휠과 RCS의 회전 권한이 `c` 근처에서 느려집니다.
-- **상대론 스타보우 비주얼** *(선택)* — `c` 근처에서 도는 화면 효과입니다. 흑체 도플러 색온도 편이
-  (전방 청색편이 / 후방 적색편이, 픽셀마다 `D = 1/[γ(1 − β cosθ)]`)에 플랑크 정밀 눈-대역 밝기 곡선,
-  **aberration** — 별과 *행성*이 진행 방향으로 뭉칩니다(은하 카메라 워프 + 후방 라이브 디테일 카메라,
-  선플레어·Scatterer 대기도 함께 이동), 그리고 하늘 그라데이션 밴딩을 없애는 HDR 카메라 스택.
-  함께 움직이는 함선은 편이시키지 않고, 맵 뷰는 항법 그대로 유지됩니다. 하늘 디테일은 스톡 설정
-  화면(난이도 옵션 → Relativity)에서 고릅니다. `Shaders/relativityvisual.bundle`에 셰이더 번들이
-  필요하며, β 하한 아래와 워프 중에는 꺼집니다.
-- **RP-1 상대론 은퇴** — 은퇴 날짜가 승무원의 고유 시간을 반영합니다.
-- **안전 가드** — β 하한 아래, 워프/점프 중, 그리고 상한 위(크라켄/NaN 방지)에서 비활성화됩니다.
+- 추력 보정 본체. 엔진의 순 추력이 F/γ³가 됩니다. 비행으로 검증됐고, 스톡과 Principia 양쪽 힘
+  프로필에서 동작합니다.
+- β, γ, 유효 추력 %, 자원 소모율 %를 보여주는 툴바 대시보드.
+- 함선별 두 시계 카운터. 미션 시간 대 승무원 고유 시간(τ = ∫dt/γ).
+- VAB/SPH 여행 플래너. 거리와 프로필을 고르면 순항 β, 두 시계, 가속/관성 구간 분해를 설계
+  확정 전에 보여줍니다.
+- Kerbalism 통합. 생명유지는 고유 시간으로 소모되고, 방사선 피폭은 의도적으로 그대로 둡니다.
+- c 근처에서 자세 제어가 둔해집니다(리액션 휠과 RCS의 회전 권한이 1/γ²로 감소).
+- RP-1 통합. 상대론 항해에서 돌아온 승무원은 경력을 유지합니다. 은퇴가 고유 시간을 셉니다.
+- 비주얼 레이어(선택, 순수 장식). 올바른 흑체 온도의 도플러 색 편이, 정확한 플랑크 곡선의
+  상대론 빔, 스타보우(별 뭉침 aberration - 라이브 후방 카메라가 확대된 후방 하늘을 선명하게
+  유지), 행성과 태양의 광행차 재조준, 그리고 함께 이동하는 선플레어. 함선 자체는 편이되지 않고
+  맵 뷰는 항법 그대로입니다. 자세한 내용과 성능 수치는
+  [위키](https://github.com/Vannadin/Relativity/wiki)에 있습니다.
+- 안전 가드. 속도 하한 아래, 워프/점프 중, 정상 범위를 벗어난 속도에서는 전부 꺼지므로 평범한
+  행성계 내 플레이에는 아무 영향이 없습니다.
 
 ## 설치
 
-**KSP 1.12.x**와 **Harmony**(`Harmony2` / HarmonyKSP)가 필요합니다.
+KSP 1.12.x와 Harmony(`Harmony2` on CKAN / HarmonyKSP)가 필요합니다.
 
-- **CKAN** (권장) — *Relativity*를 설치하면 Harmony가 자동으로 함께 설치됩니다.
-- **수동** — 릴리즈 zip을 받아 KSP 설치 폴더에 풀어 `GameData/Relativity/`에 놓습니다. Harmony는
-  따로 설치합니다.
-
-Kerbalism / RP-1 통합은 해당 모드가 있으면 자동으로 활성화됩니다.
+CKAN에서는 *Relativity*를 설치하면 Harmony가 자동으로 따라옵니다. 수동 설치는 릴리즈 zip을 받아
+KSP 설치 폴더에 풀어 `GameData/Relativity/`가 되게 놓고, Harmony를 따로 설치합니다. Kerbalism과
+RP-1 통합은 해당 모드가 있으면 알아서 켜집니다.
 
 ## 설정
 
-`GameData/Relativity/relativity.cfg` (ModuleManager 패치 가능) — `betaMin`, `betaSane`, `debugMode`,
-`kerbalismDilation`, `kerbalismExcludedRules`, `attitudeExponent`, `attitudeSkipModules`,
-`rp1RetirementDilation`, `feltGravityComfort`/`Threshold`/`Max`, `dopplerVisual`, `dopplerForceHDR`,
-`dopplerColorStrength`, `dopplerAberration`, `dopplerBodyWarp`, `dopplerVesselMask`,
-`dopplerSuppressScattererTAA`, `dopplerHeadlight`. 한 줄을 지우면 그 값의 코드 기본값을
-쓰므로, cfg 없이도 동작합니다. 비주얼의 룩 자체는 고정(제작자 보정)이고, 고급 곡선 키들은
-ModuleManager 전용으로 남아 있으며, aberration 하늘 디테일은 스톡 설정 화면에 있습니다.
+플레이어용 설정은 전부 `GameData/Relativity/relativity.cfg`(ModuleManager 패치 가능)에 있습니다.
+`betaMin`, `betaSane`, `debugMode`, `kerbalismDilation`, `kerbalismExcludedRules`,
+`attitudeExponent`, `attitudeSkipModules`, `rp1RetirementDilation`,
+`feltGravityComfort`/`Threshold`/`Max`, 그리고 `doppler*` 비주얼 토글들. 한 줄을 지우면 코드
+기본값이 적용되고, cfg가 아예 없어도 잘 돕니다. 비주얼의 룩 자체는 보정을 거쳐 고정돼 있고, 고급
+곡선 키들은 일부러 ModuleManager 전용으로 남겨 뒀습니다. aberration의 하늘 디테일은 스톡 설정
+화면(난이도 옵션 → Relativity)에서 고릅니다.
 
-고β에서 그라데이션 계단이 보이면 스카이박스가 DXT 압축본입니다 — 텍스처 교체 모드로 무압축(PNG)
-스카이박스를 쓰거나, MM 전용 키 `dopplerDither`를 올리세요.
+비주얼에 대해 미리 알아둘 것 두 가지입니다.
 
-**비주얼과 TAA(시간적 안티앨리어싱)는 같이 쓰지 마세요.** TUFX/PPv2의 TAA는 이전 프레임
-히스토리를 재투영하는데, 모션 벡터가 없는 프레임별 상대론 워프와 충돌해 고β에서 우주선 실루엣
-반짝임으로 나타납니다. 포스트 프로세싱 프로필의 AA를 **SMAA나 FXAA**로 두세요 — 둘 다 문제없음이
-확인됐고, 비주얼 자체에도 실루엣 전용 엣지 AA 패스가 들어 있습니다.
-
-**Scatterer의 자체 TAA는 자동으로 처리됩니다.** Scatterer에는 자체 TAA가 내장돼 있고(*그쪽*
-설정에서 기본 켜짐) 같은 충돌을 일으킵니다 — 프레임별 지터가 증폭된 하늘을 자글거리게 합니다.
-비주얼이 켜져 있는 동안만 이 모드가 Scatterer TAA를 잠시 꺼두고 끝나면 돌려주므로, 평상시
-(아광속 이하) 플레이에서는 Scatterer의 AA가 그대로 유지됩니다(`dopplerSuppressScattererTAA`로
-끌 수 있음). Scatterer의 SMAA 옵션은 영향 없이 함께 쓸 수 있습니다.
+- 비주얼이 켜진 상태에서 TUFX/PPv2의 시간적 AA(TAA)를 쓰지 마세요. TAA는 프레임 히스토리를
+  재투영하는데 상대론 워프에는 그걸 위한 모션 벡터가 없어서 함선 실루엣이 반짝입니다. 프로필의
+  AA는 SMAA나 FXAA로 두세요. 비주얼 자체에 실루엣 전용 엣지 AA 패스가 들어 있기도 합니다.
+  Scatterer 내장 TAA도 같은 문제가 있는데, 그쪽은 자동으로 껐다가 돌려줍니다
+  (`dopplerSuppressScattererTAA`로 거부 가능).
+- 고β에서 하늘에 계단이 보이면 스카이박스 텍스처가 DXT 압축본입니다. 텍스처 교체 모드로 PNG
+  스카이박스를 설치하거나, MM 전용 키 `dopplerDither`를 올리세요.
 
 ## 호환성
 
-전체 매트릭스는 [`docs/compatibility.md`](docs/compatibility.md)를 보세요. 요약하면 **Principia**는
-설계상 안전, **Kerbalism 3.x / ROKerbalism** 지원, **RP-1** 은퇴 어댑터 포함, **Persistent Thrust**는
-이번 릴리즈에서 시계만 추적합니다.
+Principia는 설계상 안전합니다(힘과 소모율만, 적분기는 절대 안 건드림). Kerbalism 3.x와
+ROKerbalism을 지원합니다. RP-1 은퇴 어댑터는 들어 있지만 컴파일 검증까지만 됐습니다. Persistent
+Thrust는 이번 릴리즈에서 시계만 추적합니다. 엔지니어링 노트를 포함한 전체 매트릭스는
+[`docs/compatibility.md`](docs/compatibility.md)에 있습니다.
 
 ## 문서
 
-- [`docs/design.md`](docs/design.md) — 메커닉 (설계 스펙 원본).
-- [`docs/dashboard.md`](docs/dashboard.md) — 대시보드 UX.
-- [`docs/planner.md`](docs/planner.md) — 여행 플래너 스펙.
-- [`CHANGELOG.md`](../CHANGELOG.md) — 릴리즈와 기능별 검증 상태.
-- [`ROADMAP.md`](../ROADMAP.md) — v0.1 이후 방향.
+- [위키](https://github.com/Vannadin/Relativity/wiki): 플레이어용 문서. 설치, 물리 배경, 비주얼,
+  대시보드, 플래너, FAQ.
+- [`docs/design.md`](docs/design.md), [`docs/dashboard.md`](docs/dashboard.md),
+  [`docs/planner.md`](docs/planner.md) - 설계 스펙 정본.
+- [`CHANGELOG.md`](../CHANGELOG.md): 릴리즈와 기능별 검증 상태.
+- [`ROADMAP.md`](../ROADMAP.md): 앞으로의 방향.
 
 ## 출처
 
-원래 더 큰 성간 확장 프로젝트의 상대성 레이어로 만들어졌다가 2026-07-01 이 독립 모드로 분리됐습니다.
-설계 스펙의 정본은 이제 이 저장소에 있으며, 독립 모드가 메커닉의 핵심 설계를 그대로 가져갈 수 있도록
-범용화됐습니다. `WarpFlag`는 워프/FTL 모드를 위한 범용 확장 지점으로 남습니다.
+원래 더 큰 성간 확장 프로젝트의 상대성 레이어로 만들어졌다가 2026-07-01 이 독립 모드로
+분리됐습니다. 설계 스펙의 정본은 이제 이 저장소에 있습니다. `WarpFlag`는 워프/FTL 모드를 위한
+범용 확장 지점으로 남습니다.
 
 ## 라이선스
 
-MIT — [LICENSE](../LICENSE) 참고.
+MIT - [LICENSE](../LICENSE) 참고.

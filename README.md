@@ -1,99 +1,101 @@
-# Relativity — sub-light special-relativity gameplay layer for KSP
+# Relativity
 
-A standalone **KSP 1.12.x** gameplay mod that adds the sub-light half of special relativity. Not tied to
-any planet pack.
+A special-relativity mod for KSP 1.12.x. When some other mod's drive pushes your ship toward the
+speed of light, this one makes that speed cost what it should: thrust stops buying acceleration,
+your crew ages slower than the mission clock, and since v1.0 the view out the window changes to
+match. Standalone, no planet-pack dependency.
 
-> **Status: v0.1.0-beta.** Core relativistic flight is verified in-game; several integrations compile
-> clean but are not yet play-tested (see [`CHANGELOG.md`](CHANGELOG.md) for per-feature status). Back up
-> your save before a long relativistic mission.
+It only modulates forces and consumption rates. The physics integrator is never touched, so it runs
+alongside Principia exactly as it does on stock.
 
-## What it is
+Current status: v1.0.0. The core flight layer and the visual layer are verified in-game. A few of
+the integrations (two-clock counter, trip planner, Kerbalism dilation, RP-1) compile clean but
+haven't had a proper playthrough yet, see [`CHANGELOG.md`](CHANGELOG.md) for the per-feature status.
+Back up your save before a long relativistic mission.
 
-The sub-light special-relativity **gameplay** layer (Tier 0, no visuals). Near `c`:
+## The idea
 
-- **Effective thrust falls as 1/γ³** — light becomes a natural wall you approach but never cross.
-  Propellant still burns at its nominal rate, so efficiency (not fuel bookkeeping) is what degrades.
-- **Proper-time resource burn slows as 1/γ** — a fast crew ages and consumes life-support more slowly,
-  while radiation dose keeps ticking on coordinate time.
+Near light speed, two things pull against each other. Effective thrust falls as 1/γ³: the engine
+still burns propellant at its normal rate, but the net push shrinks, so c is a wall you approach and
+never cross. Braking is just as feeble, which is the part that actually changes how you fly. You
+have to start your arrival burn absurdly early.
 
-It **modulates force and consumption rate only** — it never touches the integrator, so it is
-**Principia-safe** and rides on the stock profile identically.
+Meanwhile the crew's clock runs slow by 1/γ, and life support drains on the crew's clock, so a fast
+crew lasts longer. A 50-year cruise might cost 24 years of food. The catch is that radiation dose
+comes from outside and accumulates on coordinate time, so radiation, not starvation, is what limits
+the trip. You pick a cruise speed around that tension.
 
-## Features
+## What's in the box
 
-- **Relativistic thrust** — net engine thrust becomes `F/γ³` (verified in flight).
-- **Flight dashboard** — a stock-toolbar readout of β, γ, effective thrust %, and supply-rate %.
-- **Two-clock counter** — per-vessel mission (coordinate) vs crew (proper, τ=∫dt/γ) time.
-- **VAB/SPH trip planner** — previews cruise β, mission vs crew time, and the accel/coast breakdown.
-- **Kerbalism resource dilation** — life-support consumed over proper time (×1/γ); dose stays coordinate-time.
-- **Attitude ×1/γ** — reaction-wheel and RCS rotational authority slows near c.
-- **Relativistic starbow visual** *(optional)* — a screen effect near c: a blackbody Doppler
-  colour-temperature shift (forward blueshift / aft redshift, `D = 1/[γ(1 − β cosθ)]` per pixel) with
-  the Planck-exact eye-band brightness curve, **aberration** — stars *and planets* bunch toward the
-  travel direction (galaxy-camera warp + a live rear-detail camera; sunflares and Scatterer
-  atmospheres follow), and an HDR camera stack to keep the sky gradient banding-free. The co-moving
-  ship is left unshifted; the map view stays truthful. Sky detail is chosen in the stock settings
-  screen (Difficulty Options → Relativity). Needs the shader bundle at
-  `Shaders/relativityvisual.bundle`; off below the β floor and under warp.
-- **RP-1 relativistic retirement** — retirement date counts the crew's proper time.
-- **Safety guards** — disables below a β floor, under warp/jump, and above a sanity ceiling (kraken/NaN
-  fail-safe).
+- The thrust correction itself: net engine thrust becomes F/γ³. Verified in flight, works on stock
+  and Principia force profiles.
+- A toolbar dashboard showing β, γ, effective thrust % and supply-rate %.
+- A per-vessel two-clock counter: mission time vs the crew's proper time (τ = ∫dt/γ).
+- A VAB/SPH trip planner: pick a distance and profile, see cruise β, both clocks, and the
+  accel/coast breakdown before you commit to a design.
+- Kerbalism integration: life support is consumed over proper time, radiation dose deliberately
+  isn't.
+- Attitude gets sluggish near c (reaction wheels and RCS lose rotational authority by 1/γ²).
+- RP-1 integration: a returning relativistic crew keeps their career, retirement counts proper time.
+- The visual layer (optional, purely cosmetic): Doppler colour shift with the correct blackbody
+  temperatures, relativistic beaming on the exact Planck curve, the starbow (star-bunching
+  aberration, with a live rear camera so the magnified aft sky stays sharp), planets and the sun
+  re-aimed to their aberrated bearings, and the sunflare shifting with them. The ship itself stays
+  unshifted and the map view stays truthful. See the [wiki](https://github.com/Vannadin/Relativity/wiki)
+  for details and performance numbers.
+- Safety guards: everything switches off below a speed floor, under warp/jump, and above a sanity
+  ceiling, so normal in-system play is untouched.
 
 ## Install
 
-Requires **KSP 1.12.x** and **Harmony** (`Harmony2` / HarmonyKSP).
+You need KSP 1.12.x and Harmony (`Harmony2` on CKAN / HarmonyKSP).
 
-- **CKAN** (recommended): install *Relativity*; Harmony is pulled in automatically.
-- **Manual**: download the release zip and unzip into your KSP install so the folder lands at
-  `GameData/Relativity/`. Install Harmony separately.
-
-Kerbalism / RP-1 integrations activate automatically when those mods are present.
+CKAN: install *Relativity*, Harmony comes along automatically. Manual: grab the release zip, unzip
+into your KSP install so the folder lands at `GameData/Relativity/`, install Harmony separately.
+Kerbalism and RP-1 integrations turn themselves on if those mods are present.
 
 ## Configuration
 
-`GameData/Relativity/relativity.cfg` (ModuleManager-patchable): `betaMin`, `betaSane`, `debugMode`,
-`kerbalismDilation`, `kerbalismExcludedRules`, `attitudeExponent`, `attitudeSkipModules`,
-`rp1RetirementDilation`, `feltGravityComfort`/`Threshold`/`Max`, `dopplerVisual`, `dopplerForceHDR`,
-`dopplerColorStrength`, `dopplerAberration`, `dopplerBodyWarp`, `dopplerVesselMask`,
-`dopplerSuppressScattererTAA`, `dopplerHeadlight`. Delete a line to use its code default,
-so the mod runs cfg-free. The visual's look itself is fixed (owner-calibrated); advanced curve keys
-stay ModuleManager-only, and the aberration sky detail lives in the stock settings screen.
+Everything player-facing lives in `GameData/Relativity/relativity.cfg` (ModuleManager-patchable):
+`betaMin`, `betaSane`, `debugMode`, `kerbalismDilation`, `kerbalismExcludedRules`,
+`attitudeExponent`, `attitudeSkipModules`, `rp1RetirementDilation`,
+`feltGravityComfort`/`Threshold`/`Max`, and the `doppler*` visual toggles. Delete a line and the
+code default applies, the mod runs fine with no cfg at all. The visual's look itself is calibrated
+and fixed; the advanced curve keys are ModuleManager-only on purpose. Sky detail for the aberration
+is set in the stock settings screen (Difficulty Options → Relativity).
 
-If you see gradient banding at high β, your skybox is DXT-compressed — install an uncompressed (PNG)
-skybox via your texture-replacement mod, or raise the MM-only `dopplerDither`.
+Two things worth knowing up front about the visuals:
 
-**Do not use temporal anti-aliasing (TAA) with the visual.** TUFX/PPv2 TAA reprojects each frame
-from history, which fights the per-frame relativistic warp (no motion vectors exist for it) and
-shows up as silhouette shimmer at high β. Set your post-processing profile's AA to **SMAA or FXAA**
-instead — both verified fine; the visual also carries its own silhouette edge-AA pass.
-
-**Scatterer's own TAA is handled automatically.** Scatterer ships a built-in TAA (on by default in
-*its* settings) with the same incompatibility — its per-frame jitter shimmers the amplified sky.
-While the visual is active this mod suspends Scatterer's TAA and hands it back afterwards, so
-normal (sub-relativistic) play keeps Scatterer's AA untouched (`dopplerSuppressScattererTAA` to opt
-out). Scatterer's SMAA option is unaffected and combines fine.
+- Don't run TUFX/PPv2 temporal AA with the visual active. TAA reprojects from frame history, the
+  relativistic warp has no motion vectors for it, and the ship silhouette shimmers. Use SMAA or FXAA
+  in your profile; the visual carries its own silhouette edge-AA pass anyway. Scatterer's built-in
+  TAA has the same problem, but that one is suspended and restored automatically
+  (`dopplerSuppressScattererTAA` opts out).
+- If the sky bands at high β, your skybox texture is DXT-compressed. Install a PNG skybox via your
+  texture-replacement mod, or raise the MM-only `dopplerDither`.
 
 ## Compatibility
 
-See [`docs/compatibility.md`](docs/compatibility.md) for the full matrix. In short: **Principia** safe by
-design, **Kerbalism 3.x / ROKerbalism** supported, **RP-1** retirement adapter present, **Persistent
-Thrust** clock-only in this release.
+Principia is safe by design (forces and rates only, never the integrator). Kerbalism 3.x and
+ROKerbalism are supported. The RP-1 retirement adapter is present but compile-verified only.
+Persistent Thrust is clock-only in this release. The full matrix with the engineering notes is in
+[`docs/compatibility.md`](docs/compatibility.md).
 
 ## Documentation
 
-- [`docs/design.md`](docs/design.md) — the mechanic (design spec of record).
-- [`docs/dashboard.md`](docs/dashboard.md) — dashboard UX.
-- [`docs/planner.md`](docs/planner.md) — the trip planner spec.
-- [`CHANGELOG.md`](CHANGELOG.md) — releases and per-feature verification status.
-- [`ROADMAP.md`](ROADMAP.md) — direction beyond v0.1.
+- [Wiki](https://github.com/Vannadin/Relativity/wiki), the player-facing docs: install, physics
+  background, visuals, dashboard, planner, FAQ.
+- [`docs/design.md`](docs/design.md), [`docs/dashboard.md`](docs/dashboard.md),
+  [`docs/planner.md`](docs/planner.md), the design specs of record.
+- [`CHANGELOG.md`](CHANGELOG.md), releases and per-feature verification status.
+- [`ROADMAP.md`](ROADMAP.md), where this is going.
 
 ## Provenance
 
-Originally built as the relativity layer of a larger interstellar-expansion project, then extracted into
-this standalone mod on 2026-07-01. The design spec of record now lives here — generalized so the
-mechanic's core design travels with the standalone mod. `WarpFlag` stays a generic extension point for
-warp/FTL mods.
+Originally built as the relativity layer of a larger interstellar-expansion project, then extracted
+into this standalone mod on 2026-07-01. The design spec of record lives here now. `WarpFlag` stays a
+generic extension point for warp/FTL mods.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).

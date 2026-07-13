@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- 상대론 도플러 다이얼: 탑뷰 우주선 기준으로 수차(눈금 몰림)·도플러 색(림)·beaming 밝기(눈금 길이)를 β 슬라이더로 확인하는 셰이더 튜닝 도구. 자립형 — 브라우저로 바로 열림 -->
+<!-- 상대론 도플러 다이얼: 탑뷰 우주선 기준으로 수차(눈금 몰림)·도플러 색(림)·beaming 밝기(눈금 길이)를 β 슬라이더로 확인하는 셰이더 튜닝 도구. 자립형 - 브라우저로 바로 열림 -->
 <html lang="ko">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -130,7 +130,7 @@
     <div class="ro"><div class="k">γ (로런츠 인자)</div><div class="v" id="roGamma">1.000</div></div>
     <div class="ro"><div class="k">D 전방 / 후방</div><div class="v" id="roD">1.00 <small>/</small> 1.00</div></div>
     <div class="ro"><div class="k">밝기 전방 / 후방</div><div class="v" id="roBeam">1.00 <small>/</small> 1.00</div></div>
-    <div class="ro"><div class="k">청↔적 경계각 θ₀</div><div class="v" id="roBound">—</div></div>
+    <div class="ro"><div class="k">청↔적 경계각 θ₀</div><div class="v" id="roBound">-</div></div>
   </div>
 
   <div class="main">
@@ -184,9 +184,9 @@
 
       <div class="note">
         림/눈금 색 = 최종 화면색 시뮬레이션(밝은 별 기준): <code>tint × beam</code> 후 초과 노출은
-        <code>white bleed</code>만큼 백열 — 게임 셰이더와 동일 코드.<br>
+        <code>white bleed</code>만큼 백열 - 게임 셰이더와 동일 코드.<br>
         눈금 위치 = 수차 <code>cosθ′=(cosθ+β)/(1+βcosθ)</code>.<br>
-        플랑크 정확 = <code>(e^x−1)/(e^(x/D)−1)</code>, x≈4.02 (550nm) — D≈1에서 ~D⁴, 전방 점근 선형.<br>
+        플랑크 정확 = <code>(e^x−1)/(e^(x/D)−1)</code>, x≈4.02 (550nm) - D≈1에서 ~D⁴, 전방 점근 선형.<br>
         셰이더 클램프 = <code>max(Max·(1−e^(−Dᵉ/Max)), Min)</code>.
       </div>
     </div>
@@ -202,7 +202,7 @@
   // ---- 셰이더와 동일한 물리/색 모델 ------------------------------------
   function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
 
-  // Tanner-Helland 흑체 근사 — DopplerVisual.shader의 Blackbody()와 동일
+  // Tanner-Helland 흑체 근사 - DopplerVisual.shader의 Blackbody()와 동일
   function blackbody(tk) {
     var t = Math.min(Math.max(tk, 1000), 40000) / 100;
     var r = (t <= 66) ? 1 : clamp01(1.29293618 * Math.pow(t - 60, -0.1332047592));
@@ -230,7 +230,7 @@
   // 게임 셰이더의 최종 화면색 시뮬레이션 (밝은 별 = 소스 1.0 기준): tint × beam 후
   // 채널 1 초과분은 색상 보존 정규화 + white bleed(초과 노출 → 흰색으로 번짐).
   function screenColor(D) {
-    // colour strength: 색(tint)만 D^s를 봄 — 후방은 어두워지기보다 먼저 붉어지게
+    // colour strength: 색(tint)만 D^s를 봄 - 후방은 어두워지기보다 먼저 붉어지게
     var t = dopplerTint(Math.pow(D, st.cs)), b = beamOf(D);
     var c = [t[0] * b, t[1] * b, t[2] * b];
     var m = Math.max(c[0], c[1], c[2]);
@@ -310,7 +310,7 @@
       ctx.beginPath();
       // 화면각 a(0=위) → canvas arc 각도(0=+x): φ = a − π/2
       ctx.arc(cx, cy, R, a0 - Math.PI / 2, a1 - Math.PI / 2);
-      // 최종 화면색 (tint × beam + white bleed) — 전방 중심은 백열, 후방은 어두운 적색
+      // 최종 화면색 (tint × beam + white bleed) - 전방 중심은 백열, 후방은 어두운 적색
       ctx.strokeStyle = screenColor(Dof(cosT));
       ctx.lineWidth = rimW;
       ctx.stroke();
@@ -414,8 +414,8 @@
     var el = document.getElementById("roBound");
     if (st.beta > 1e-4) {
       var c0 = (g - 1) / (g * betaM());
-      el.textContent = c0 <= 1 ? fmt(Math.acos(c0) * 180 / Math.PI, 1) + "°" : "—";
-    } else el.textContent = "—";
+      el.textContent = c0 <= 1 ? fmt(Math.acos(c0) * 180 / Math.PI, 1) + "°" : "-";
+    } else el.textContent = "-";
   }
 
   // ---- 컨트롤 바인딩 ----------------------------------------------------

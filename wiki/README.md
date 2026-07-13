@@ -1,4 +1,4 @@
-# wiki/ — source for the GitHub wiki
+# wiki/ - source for the GitHub wiki
 
 These Markdown files are the **source of truth** for the project's GitHub wiki (usage + background
 theory). They are version-controlled here (the wiki repo is easy to lose) and published to the separate
