@@ -16,22 +16,27 @@ namespace Relativity
             => RelativityCore.Evaluate(BarycentricSpeed(vessel) / RelativityCore.C, underWarpOrJump,
                                        RelativityConfig.BetaMin, RelativityConfig.BetaSane);
 
-        // Barycentric speed (m/s). KSP's root body (Sun) is the fixed inertial origin,
-        // so "barycentric" == Sun-fixed inertial.
+        // Barycentric speed (m/s) — the magnitude of the velocity vector below.
+        static double BarycentricSpeed(Vessel vessel) => BarycentricVelocity(vessel).magnitude;
+
+        // Barycentric velocity (m/s, world/inertial frame). KSP's root body (Sun) is the
+        // fixed inertial origin, so "barycentric" == Sun-fixed inertial. The Doppler visual
+        // (DopplerVisual) reads the *direction* of this vector for the per-pixel angle θ,
+        // so it stays in lockstep with the β driving the effect (same frame, same sample).
         // VERIFY: in the activation regime the vessel is on solar escape (SOI == Sun),
         //   so obt_velocity is already Sun-relative = barycentric. The chain fallback
         //   (inside a planet SOI, where β is negligible anyway) sums Orbit.GetFrameVel()
         //   up the parent chain. Confirm GetFrameVel() / obt_velocity units are m/s.
         // VERIFY (Principia profile): if Principia is present, prefer its barycentric
         //   velocity (read-only External) over this KSP-derived value, and wire it here.
-        static double BarycentricSpeed(Vessel vessel)
+        public static Vector3d BarycentricVelocity(Vessel vessel)
         {
-            if (vessel == null || vessel.orbit == null) return 0.0;
+            if (vessel == null || vessel.orbit == null) return Vector3d.zero;
 
             // SOI == Sun  ⇔  the reference body has no parent.
             CelestialBody soi = vessel.orbit.referenceBody;
             if (soi != null && soi.orbit == null)
-                return vessel.obt_velocity.magnitude;
+                return vessel.obt_velocity;
 
             // Fallback: sum frame velocities up the parent chain (fixed inertial frame).
             Vector3d vel = vessel.orbit.GetFrameVel();
@@ -41,7 +46,7 @@ namespace Relativity
                 vel += o.GetFrameVel();
                 o = o.referenceBody != null ? o.referenceBody.orbit : null;
             }
-            return vel.magnitude;
+            return vel;
         }
     }
 }

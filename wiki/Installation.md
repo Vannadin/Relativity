@@ -21,6 +21,11 @@ Search for **Relativity** and install it — CKAN pulls in Harmony automatically
 
 Your `GameData` should contain both `Relativity/` and `000_Harmony/`.
 
+The release includes the pre-built visual shader bundle at
+`Relativity/Shaders/relativityvisual.bundle` — the optional relativistic [[Visuals]] need it. If
+it is missing the visuals silently stay off (one `KSP.log` line) and the gameplay layer is
+unaffected.
+
 ## Optional integrations (auto-detected)
 
 None of these is required — each activates only if the target mod is present:

@@ -13,9 +13,14 @@ not tied to any planet pack; it works with any interstellar setup.
 **Scope.**
 - **In** — the Tier 0 core mechanic (thrust scaling, resource scaling, dashboard). Reference-frame
   choice. Principia / SigmaBinary compatibility reasoning. Physics grounding.
-- **Out** — the visual/shader layer (Tier 1–2 starbow, §2.5 — a separate lane). Actual clock time
-  dilation / time-warp manipulation (a passive proper-time odometer is fine; manipulating UT is not).
-  Energy/fuel mass-ratio economics. General-relativistic effects (this is special relativity only).
+- **In (added post-v0.1)** — the **relativistic visual** (§2.5): a decoupled, optional screen effect
+  (off below β_min, in map view, and under warp) with a blackbody Doppler colour shift, Planck-exact
+  beaming, aberration of the star background (galaxy-camera warp + live rear-detail camera), **and
+  aberration of scaled bodies** (planets/moons/stars re-aimed render-side; sunflares/Scatterer follow).
+- **Out** — actual clock time dilation / time-warp manipulation (a passive proper-time odometer is
+  fine; manipulating UT is not). Energy/fuel mass-ratio economics. General-relativistic effects (this
+  is special relativity only). Reflection into other mods' internals (Scatterer/Kopernicus flares are
+  handled by render-window timing and an angular shield, never by hacking their code).
 
 **External references.**
 - Principia (Newtonian n-body integrator, barycentric inertial frame):
@@ -63,7 +68,7 @@ clock — a fast crew ages less but soaks the same dose. So the real danger on a
 | Reference frame | Solar System **barycenter** inertial frame, fixed at departure. β measured against it. |
 | Principia compatible? | **Yes** — we modulate the *input force* and *consumption rate*, never the integrator. Unlike warp, this does not bend spacetime. Principia even supplies barycentric velocity for free. |
 | Display | Show both nominal and effective thrust, plus γ / β / resource-rate multiplier. The split readout *is* the mechanic's identity (see [dashboard.md](dashboard.md)). |
-| Visuals | **Out of scope** — the starbow shader layer is a separate lane (§2.5). Ship Tier 0 (mechanic) only. |
+| Visuals | **Shipped** (post-v0.1, owner-calibrated) — an optional decoupled screen effect: blackbody Doppler tint + Planck-exact beaming (near cam, HDR stack), star-background aberration (galaxy-camera warp, settings-screen cube size, live rear camera), and scaled-body aberration incl. sunflare/Scatterer follow-along (§2.5). |
 
 ---
 
@@ -184,12 +189,16 @@ question is **resolved** (§4): Principia reads the accumulated `part.force` cen
 `FashionablyLate`, so writing that channel before stage 7 suffices — no fork. The integrator is never
 touched.
 
-### 2.5 Optional visual layer — 3 tiers (OUT OF SCOPE — separate lane)
+### 2.5 Optional visual layer — 3 tiers
 
-> **Scope.** The visual/shader layer (Tier 1–2 starbow) is **out of scope** — relativistic
-> post-process shaders are a separate discipline (cf. Scatterer/EVE: visual-mod shader work belongs to
-> visual-mod authors). **The deliverable is Tier 0 only** (the mechanic + dashboard). The tiers below
-> are retained as a reference/offer for whoever owns visuals, not as a work item here.
+> **Scope (updated post-v0.1, owner-calibrated in-game at β ≈ 0.98).** Tier 0 (mechanic + dashboard)
+> shipped first, then the visual — **all three optical components plus scaled-body aberration** are
+> implemented as an optional, decoupled screen effect. Runtime: `src/DopplerVisual.cs` (manager: bundle
+> load, HDR stack, galaxy-cube capture, rear live camera), `src/DopplerBlitter.cs` (near-cam
+> colour/beaming), `src/GalaxyAberrationBlitter.cs` (galaxy-cam star warp), `src/BodyAberration.cs`
+> (render-scoped body re-aiming), `src/RelativityGameSettings.cs` (stock settings-screen sky detail);
+> offline shader build in `unity-shaders/`. The decoupling below is what lets the visual ship without
+> touching gameplay.
 
 A relativistic screen-space post-process is viable in KSP (black-hole lensing mods already do this).
 The relativistic look decomposes into three physically exact components:
@@ -207,9 +216,39 @@ single shader pass.
 gameplay:
 
 - **Tier 0 — core, no visuals.** Thrust/γ³ + resource/γ + dashboard. Gameplay-complete on its own.
-- **Tier 1 — cheap visual.** Doppler color grade + beaming brightness only, no geometry warp. Best
-  value-for-effort; sells "I'm moving fast" past ~0.5c.
-- **Tier 2 — full starbow.** Adds the aberration geometry warp. Harder, but a proven path.
+- **Tier 1 — Doppler colour + beaming (SHIPPED, post-v0.1).** Per-pixel `D = 1/[γ(1 − β cosθ)]` in a
+  full-screen shader on the flight near camera. Colour is a **blackbody temperature shift** — a 6500K
+  sky at Doppler D *is* a blackbody at `6500·D` K (the D³ folds into the Planck spectrum), so the tint
+  recolours even white stars. Brightness is the **Planck-exact eye-band curve**
+  `(e^x−1)/(e^{x/D}−1)`, `x = hc/(λk·6500K) ≈ 4.02` at 550nm — slope ~D⁴ near D=1, asymptotically
+  linear toward c (the energy escapes to UV), exponentially dark aft with a visibility floor.
+  Stability rails on top of the physics: overexposure bleeds to white like a camera (`whiteBleed`),
+  a highlight guard + amplification cap + sunflare shield + hull-silhouette ramp keep bright sources
+  and the ship outline from blowing out or shimmering, and pre-beaming dither masks 8-bit skybox
+  quantization. The camera stack (galaxy/scaled/near) is **forced to HDR** while the layer is
+  active (sub-relativistic play keeps the stock LDR stack) — float buffers kill gradient banding
+  at the source; the shader's soft-clip acts as the tonemapper stock
+  lacks. The co-moving ship is depth-masked out. Player knobs: `dopplerForceHDR`,
+  `dopplerColorStrength` (1.0 = physically exact hue timing); the curve itself is fixed
+  (owner-calibrated), with the full surface as MM-only keys.
+- **Tier 2 — starbow aberration (SHIPPED, post-v0.1, v2 architecture).** The warp runs **on the galaxy
+  camera only**, which draws nothing but the skybox — pure replacement is structurally safe, and
+  planets/sun/plumes/ship composite on top untouched (the v1 near-camera additive-difference composite
+  is superseded). Each sky pixel samples a one-time galaxy cubemap at its **inverse-aberrated**
+  direction `cos θ_src = (cos θ − β)/(1 − β cos θ)`. Cube size is a stock settings-screen choice
+  (Auto/1024–8192; Auto measures the installed skybox, TextureReplacer included, capped 4096; clamped
+  to the GPU's cubemap ceiling). Above β ≈ 0.5 a **live rear camera** (FOV = 2·acos β, square RT
+  sized from the screen's pixel density over the source cone, pow2 buckets 512–4096)
+  re-renders the aft sky each frame — the rear pole magnifies by (1+β)/(1−β), which no static cube can
+  follow — and crossfades into the cube at its cone edge. Optional (`dopplerAberration`).
+- **Tier 2b — scaled-body aberration (SHIPPED).** `BodyAberration` re-aims every planet/moon/star to
+  its **forward-aberrated** bearing `cos θ_obs = (cos θ + β)/(1 + β cos θ)` (direction only, distance
+  preserved) — but **only inside the render**: moved at the scaled camera's onPreCull, restored after
+  the near camera renders. Physics, the map, and every Update-time consumer always see true positions;
+  flare systems and Scatterer's per-camera reads (source-verified) fall inside the window and follow
+  automatically. PQS-active bodies are skipped (their local-space twin renders at the true bearing).
+  Optional (`dopplerBodyWarp`). Known limit: Kopernicus multi-star secondary flares stay at true
+  bearings (drawn by KopernicusStar, outside our reach without reflection).
 
 ### 2.6 Implementation guards / edge cases (must-handle)
 
@@ -400,7 +439,11 @@ modpack-specific coordinate-time resource).
 - `.cfg` tunables (§5).
 
 **Deferred (post-v0.1).**
-- Visual/starbow layer (§2.5) — a separate lane, likely never in this repo.
+- ~~Scaled-body aberration~~ — **since shipped** (§2.5 Tier 2b): render-scoped transform re-aiming
+  turned out to need no object-cubemap at all. Still open from that line of work: Kopernicus
+  multi-star secondary flares (drawn by KopernicusStar at true bearings — reflection-free fix
+  unknown), and optionally detecting the *Deferred* mod to use its GBuffer depth instead of the
+  per-frame `depthTextureMode` request.
 - Secondary background-thrust targets beyond PT (§3): WarpThrust and KSPIE engines/PhotonSail each carry
   their own private `Perturb` copy, so each needs its own patch — optional, deferred. Principia's
   intrinsic-force flight-plan burns are unsupported (different model). The PT primary adapter ships in

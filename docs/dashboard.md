@@ -6,7 +6,8 @@
 **What this is.** The mechanic's identity *is* its readout ("the player sees nominal vs effective
 thrust diverge as β climbs", design.md §1), so the dashboard is a first-class design surface, not
 chrome. This is the brief for extending the draft `RelativityDashboard.cs` stub (`src/`). Scope: the
-in-flight HUD only — no shader/visual layer (design.md §2.5).
+the in-flight HUD only. The Tier 1 Doppler/beaming screen post-process is a separate layer
+(`src/DopplerVisual.cs`, design.md §2.5), not part of this HUD spec.
 
 **Design tension it resolves.** design.md §0 says the *felt* mechanic needs no math; §1 says the split
 readout is the identity. The answer is a **two-mode dashboard**: a math-free Simple mode and a full

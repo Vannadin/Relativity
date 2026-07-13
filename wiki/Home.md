@@ -28,6 +28,8 @@ around that tension.
 - **[[Installation]]** — requirements, CKAN / manual install.
 - **[[The Physics]]** — the background theory: β, γ, the 1/γ³ thrust wall, proper-time 1/γ, radiation,
   reference frames, attitude.
+- **[[Visuals]]** — the optional relativistic view: Doppler colour, beaming, the starbow, the
+  shifted sunflare.
 - **[[Dashboard]]** — reading the in-flight HUD (Simple/Expert, the two clocks, the brake cue).
 - **[[Trip Planner]]** — sizing a ship in the VAB/SPH before you launch.
 - **[[Configuration]]** — every `relativity.cfg` key.
@@ -36,9 +38,10 @@ around that tension.
 
 ## What it is *not*
 
-No visuals (no starbow shader — a separate lane), no time-warp/clock manipulation (the crew clock is a
-passive odometer), no general relativity, and **no dependency on any planet pack**. It ships no drive or
-parts of its own — it is a pure *layer* that does nothing until some other mod's high-ΔV drive actually
-pushes you to a relativistic speed.
+No time-warp/clock manipulation (the crew clock is a passive odometer), no general relativity, and
+**no dependency on any planet pack**. It ships no drive or parts of its own — it is a pure *layer*
+that does nothing until some other mod's high-ΔV drive actually pushes you to a relativistic speed.
+(The relativistic [[Visuals]] — once "a separate lane" — shipped post-v0.1 and are optional and
+purely cosmetic.)
 
 License: MIT. Source: <https://github.com/Vannadin/Relativity>

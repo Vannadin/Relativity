@@ -26,6 +26,18 @@ namespace Relativity
         ApplicationLauncherButton appButton;
         bool manualShow;                 // toolbar toggle: force the window on even below activation
         Texture2D appIcon;
+        bool ownIcon;                    // true = procedural fallback WE created (must destroy; DB textures must not)
+
+        const double G0 = 9.80665;       // standard gravity (target accel entered/shown in g)
+        string targetText = "1.00";      // constant-g target, in g (editable)
+        bool targetSynced;               // re-sync targetText from the vessel's governor on vessel switch
+        Vessel lastVessel;
+        bool governing;                  // active vessel's governor state
+        bool prevAuto;                   // edge-detect the auto-open trigger (layer active / governing)
+        bool tuneOpen;                   // Doppler visual live-tuning foldout (session-only sliders)
+        bool lastTuneOpen;               // edge-detect the foldout for the height re-fit (see OnGUI)
+        RelativityCruiseControl cc;      // cached per-frame in Update (OnGUI runs several times/frame)
+        RelativityClock clock;
 
         void Start()
         {
@@ -40,6 +52,7 @@ namespace Relativity
             if (appButton != null && ApplicationLauncher.Instance != null)
                 ApplicationLauncher.Instance.RemoveModApplication(appButton);
             appButton = null;
+            if (ownIcon && appIcon != null) Destroy(appIcon);   // only the procedural fallback we made
         }
 
         void AddToolbarButton()
@@ -51,8 +64,8 @@ namespace Relativity
                 null, null, null, null,
                 ApplicationLauncher.AppScenes.FLIGHT,
                 Icon());
-            // No SetTrue: the button starts off so normal play stays uncluttered; the
-            // window still auto-appears when the layer activates (see OnGUI).
+            // Starts off (uncluttered normal play); Update auto-opens it + SetTrue's the button when the
+            // layer engages, and the player can toggle it off/on freely thereafter.
         }
 
         // The shipped 38×38 icon (γ on a blueshift→redshift gradient with the light-wall curve),
@@ -65,6 +78,7 @@ namespace Relativity
                 appIcon = GameDatabase.Instance.GetTexture("Relativity/Icons/toolbar", false);
             if (appIcon != null) return appIcon;
             const int n = 38;
+            ownIcon = true;
             appIcon = new Texture2D(n, n, TextureFormat.ARGB32, false);
             var teal = new Color(0.20f, 0.85f, 0.85f, 1f);
             var blue = new Color(0.30f, 0.55f, 1.00f, 1f);
@@ -84,19 +98,57 @@ namespace Relativity
         }
 
         // Evaluate once per frame; OnGUI runs several times per frame so don't compute there.
+        // Smoothed frame time for the debug foldout (EMA; raw deltaTime jitters too much to read).
+        // unscaled so physics warp can't fake a "fast" frame. Cheap A/B: flip a feature toggle and
+        // watch this settle. The EMA hides spikes (owner round 13: "measured inaccurately"), so a
+        // 1-second WORST frame rides alongside it — stutter shows there while the EMA stays calm.
+        float frameMs;
+        float frameWorst, worstShown, worstResetAt;
+
         void Update()
         {
+            float dt = Time.unscaledDeltaTime * 1000f;
+            frameMs = Mathf.Lerp(frameMs, dt, 0.05f);
+            if (dt > frameWorst) frameWorst = dt;
+            if (Time.unscaledTime >= worstResetAt)
+            {
+                worstShown = frameWorst; frameWorst = 0f;
+                worstResetAt = Time.unscaledTime + 1f;
+            }
             Vessel v = FlightGlobals.ActiveVessel;
             st = v != null
                 ? RelativityState.Evaluate(v, WarpFlag.IsWarpingOrJumping(v))
                 : default(RelativityCore.State);
+
+            if (v != lastVessel) { lastVessel = v; targetSynced = false; }   // re-sync target on switch
+            // Resolve the per-vessel modules once per frame; OnGUI/DrawWindow runs several times/frame.
+            cc    = v != null ? v.FindVesselModuleImplementing<RelativityCruiseControl>() : null;
+            clock = v != null ? v.FindVesselModuleImplementing<RelativityClock>() : null;
+            governing = cc != null && cc.Governing;
+
+            // Auto-open the readout the moment the layer engages (active or governing), syncing the toolbar
+            // button so it reads as "on". manualShow is now the SINGLE visibility flag, so the toolbar can
+            // always close it again — even while active (fixes "toolbar won't turn it off").
+            bool auto = st.Active || governing;
+            if (auto && !prevAuto)
+            {
+                manualShow = true;
+                if (appButton != null) appButton.SetTrue(false);   // false = don't re-fire onTrue
+            }
+            prevAuto = auto;
         }
 
         void OnGUI()
         {
-            // Auto-appears when the layer is active (design.md §1 identity); the toolbar
-            // button force-shows it otherwise so the player can open the readout on demand.
-            if (!st.Active && !manualShow) return;
+            // manualShow is the single visibility flag: auto-set on activation (Update), toggled by the
+            // toolbar, so the button reliably opens AND closes the readout (design.md §1 identity).
+            if (!manualShow) return;
+            // No per-frame height reset (it flickered while dragging); GUILayout.Window auto-grows but
+            // never shrinks, so the one place the window LOSES lines — the Doppler foldout collapsing —
+            // re-fits the height here, BEFORE the Window call: a reset written inside the window
+            // callback is overwritten by the rect GUILayout.Window returns (same pattern as
+            // EditorPlanner.OnGUI).
+            if (tuneOpen != lastTuneOpen) { window.height = 0f; lastTuneOpen = tuneOpen; }
             window = GUILayout.Window(GetInstanceID(), window, DrawWindow, "Relativity");
         }
 
@@ -113,9 +165,15 @@ namespace Relativity
             GUILayout.Label(string.Format(ci, "thrust   {0:F1} %  (×1/γ³)", thrustPct));
             GUILayout.Label(string.Format(ci, "supplies {0:F1} %  rate (×1/γ)", burnPct));
 
+            // Passenger-perspective readout: the proper acceleration the crew feel from thrust (un-reduced),
+            // in g, and how much slower their clock runs. FeltG = Σ finalThrust / (m·g0); 0 while coasting.
+            double feltG = RelativityGravity.FeltG(FlightGlobals.ActiveVessel);
+            GUILayout.Label(string.Format(ci, "felt gravity  {0:F2} g   (crew)", feltG));
+            if (st.Gamma > 1.0001)
+                GUILayout.Label(string.Format(ci, "crew clock  {0:F1} %  of KSC's", 100.0 / st.Gamma));
+
             // Two-clock counter (design.md §6): mission (coordinate) vs crew (proper ∫dt/γ) time.
-            Vessel av = FlightGlobals.ActiveVessel;
-            RelativityClock clock = av != null ? av.FindVesselModuleImplementing<RelativityClock>() : null;
+            // clock/cc were resolved once in Update (OnGUI runs several times per frame).
             if (clock != null)
             {
                 GUILayout.Space(3f);
@@ -126,8 +184,133 @@ namespace Relativity
                     GUILayout.Label(string.Format(ci, "relativistic  {0} mission / {1} crew",
                         Clock(clock.RelCoordTime), Clock(clock.RelProperTime)));
             }
+
+            // Constant-g cruise governor (RelativityCruiseControl). Holds F/m at the target by trimming
+            // the thrust limiter as mass drops; the 1/γ³ falloff still applies on top, so near c the
+            // felt accel drops anyway (wiki The-Physics §7). Set the target at low β before the burn.
+            if (cc != null)
+            {
+                if (!targetSynced) { targetText = (cc.TargetAccel / G0).ToString("F2", ci); targetSynced = true; }
+                GUILayout.Space(3f);
+                cc.Governing = GUILayout.Toggle(cc.Governing, "Constant-g cruise");
+
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("target", GUILayout.Width(48f));
+                targetText = GUILayout.TextField(targetText, GUILayout.Width(56f));
+                GUILayout.Label("g", GUILayout.Width(14f));
+                GUILayout.EndHorizontal();
+
+                double g;
+                if (double.TryParse(targetText, NumberStyles.Any, ci, out g) && g > 0.0)
+                    cc.TargetAccel = g * G0;
+
+                // The governor only caps thrust; delivered = throttle × limiter, so it holds the target
+                // only at (near) full throttle. Flag it when the player is throttled down while governing.
+                Vessel av = FlightGlobals.ActiveVessel;
+                bool lowThrottle = cc.Governing && av != null && av.ctrlState != null && av.ctrlState.mainThrottle < 0.99f;
+                string status = !cc.Governing ? "off" : lowThrottle ? "holding — THROTTLE UP" : "holding";
+                GUILayout.Label(string.Format(ci, "= {0:F2} m/s²   {1}", cc.TargetAccel, status));
+            }
+
+            // Doppler visual live-tuning (session-only): DopplerBlitter re-reads these statics every
+            // frame, so slider moves apply on the NEXT frame — no rebuild, no scene change. Values are
+            // not persisted; copy the keepers into relativity.cfg. "beam max" slides in log10 up to 100:
+            // the shader's smooth ceiling max·(1−e^(−Dᵉ/max)) goes linear when Dᵉ ≪ max, so the top of
+            // the slider ≈ unclamped physical Dᵉ.
+            if (RelativityConfig.DopplerVisual)
+            {
+                GUILayout.Space(3f);
+                // Height re-fit on collapse happens in OnGUI (state edge, before the Window call).
+                tuneOpen = GUILayout.Toggle(tuneOpen, "Doppler visual");
+                if (tuneOpen)
+                {
+                    // Player-facing knobs (the look itself is finalized — see RelativityConfig defaults).
+                    RelativityConfig.DopplerForceHDR = GUILayout.Toggle(RelativityConfig.DopplerForceHDR, "force HDR (camera stack)");
+                    RelativityConfig.DopplerColorStrength = Slider("colour str", RelativityConfig.DopplerColorStrength, 0f, 4f);
+
+                    // Dev tuning kit — debugMode only. These write the MM-patchable advanced statics.
+                    if (RelativityConfig.DebugMode)
+                    {
+                        // Perf A/B: smoothed frame time + one toggle per feature — flip one, watch
+                        // this settle, and the cost of that feature is measured in-game. Resolution
+                        // rides on the line so any recorded figure carries it; "worst" is the ugliest
+                        // single frame of the last second (the EMA averages spikes away).
+                        var ci2 = CultureInfo.InvariantCulture;
+                        GUILayout.Label("frame " + frameMs.ToString("F1", ci2)
+                            + " ms (" + (frameMs > 0.01f ? (1000f / frameMs).ToString("F0", ci2) : "—") + " fps)"
+                            + "  worst " + worstShown.ToString("F1", ci2) + "  @ " + Screen.width + "×" + Screen.height);
+                        // Ground truth for the gated subsystems — debug view 3 cannot show these
+                        // (depth cover paints its G channel whether or not the mask camera renders).
+                        GUILayout.Label("mask " + (DopplerVisual.VesselMaskLive ? "LIVE" : "asleep")
+                            + " · rear " + (DopplerVisual.RearLive
+                                ? DopplerVisual.RearSize + "² fov " + DopplerVisual.RearFovDeg.ToString("F0", ci2) + "°"
+                                : "off")
+                            + " · cube " + (DopplerVisual.CubeReady ? DopplerVisual.CubeFace + "/face" : "NOT READY"));
+                        RelativityConfig.DopplerVesselMask = GUILayout.Toggle(RelativityConfig.DopplerVesselMask, "vessel mask (plumes)");
+                        RelativityConfig.DopplerVesselMaskFlipY = GUILayout.Toggle(RelativityConfig.DopplerVesselMaskFlipY, "vessel mask flip Y");
+                        RelativityConfig.DopplerSuppressScattererTAA = GUILayout.Toggle(RelativityConfig.DopplerSuppressScattererTAA, "suspend Scatterer TAA");
+                        RelativityConfig.DopplerPlanckBeam = GUILayout.Toggle(RelativityConfig.DopplerPlanckBeam, "Planck beam (exact eye-band)");
+                        if (!RelativityConfig.DopplerPlanckBeam)
+                        {
+                            RelativityConfig.DopplerBeaming = Slider("beam exp",  RelativityConfig.DopplerBeaming, 0f, 6f);
+                            float lg = Slider("beam max", Mathf.Log10((float)RelativityConfig.DopplerBeamMax), 0f, 2f, true);
+                            RelativityConfig.DopplerBeamMax = Mathf.Pow(10f, lg);
+                        }
+                        RelativityConfig.DopplerBeamMin   = Slider("beam min",  RelativityConfig.DopplerBeamMin, 0f, 1f);
+                        RelativityConfig.DopplerWhiteBleed = Slider("white bleed", RelativityConfig.DopplerWhiteBleed, 0f, 1f);
+                        RelativityConfig.DopplerDither    = Slider("dither",    RelativityConfig.DopplerDither, 0f, 4f);
+                        RelativityConfig.DopplerSunMaskDeg = Slider("sun mask°", RelativityConfig.DopplerSunMaskDeg, 0f, 40f);
+                        // Flare shift window (1 = the flare's hull-overlapping half shifts with its
+                        // sky half; 0 = sky half only → expect the silhouette seam) and the
+                        // forward-headlight pair: scale drives how fast β lights the hull, max
+                        // is the asymptotic ceiling — the overexposure sweet-spot lives on these two.
+                        RelativityConfig.DopplerFlareSeparate = GUILayout.Toggle(RelativityConfig.DopplerFlareSeparate, "flare separation (Scatterer, additive)");
+                        RelativityConfig.DopplerFlareFlipY    = GUILayout.Toggle(RelativityConfig.DopplerFlareFlipY, "flare flip Y");
+                        RelativityConfig.DopplerSunFlareShift = Slider("flare shift", RelativityConfig.DopplerSunFlareShift, 0f, 1f);
+                        // Sunlight toggle = re-aim to the warped sun + Doppler dim/tint, so hull
+                        // shading matches the screen.
+                        RelativityConfig.DopplerSunlight      = GUILayout.Toggle(RelativityConfig.DopplerSunlight, "Doppler sunlight (warp + dim)");
+                        RelativityConfig.DopplerHeadlight    = Slider("headlight", RelativityConfig.DopplerHeadlight, 0f, 0.3f);
+                        RelativityConfig.DopplerHeadlightMax = Slider("headlt max", RelativityConfig.DopplerHeadlightMax, 0f, 4f);
+                        // Shimmer isolation pair: guard 0 turns the luminance-reactive branch off
+                        // entirely; cap 1 forbids any amplification. Drag one at a time to pin
+                        // which stabilizer the hull-edge jitter rides on.
+                        RelativityConfig.DopplerHighlightGuard = Slider("hl guard", RelativityConfig.DopplerHighlightGuard, 0f, 1f);
+                        RelativityConfig.DopplerBeamCap   = Slider("beam cap",  RelativityConfig.DopplerBeamCap, 1f, 32f);
+                        RelativityConfig.DopplerHullRamp  = Slider("hull ramp", RelativityConfig.DopplerHullRamp, 0.5f, 32f);
+                        RelativityConfig.DopplerEdgeAA    = Slider("edge AA",   RelativityConfig.DopplerEdgeAA, 0f, 1f);
+                        // Diagnosis views: 1 beam, 2 srcLum, 3 mask (shader channels, SMAA bypassed);
+                        // 4 SMAA edges RT, 5 SMAA weights RT (chain innards); 6 captured flare RT.
+                        RelativityConfig.DopplerDebugView = Mathf.Round(Slider("debug view", RelativityConfig.DopplerDebugView, 0f, 6f));
+                        RelativityConfig.DopplerIntensity = Slider("intensity", RelativityConfig.DopplerIntensity, 0f, 1f);
+                        // Aberration debug: axis-convention insurance, settled in-game without a rebuild.
+                        // Master switch first: off = colour/beaming only (kills sky warp + rear cam +
+                        // body warp in one flip) — the pre-distortion state, for shimmer bisection.
+                        RelativityConfig.DopplerAberration = GUILayout.Toggle(RelativityConfig.DopplerAberration, "aberration (sky warp + rear cam)");
+                        RelativityConfig.DopplerAberrFlipY = GUILayout.Toggle(RelativityConfig.DopplerAberrFlipY, "aberration flip Y");
+                        RelativityConfig.DopplerRearFlipY  = GUILayout.Toggle(RelativityConfig.DopplerRearFlipY, "rear-cam flip Y");
+                        RelativityConfig.DopplerBodyWarp   = GUILayout.Toggle(RelativityConfig.DopplerBodyWarp, "body aberration");
+                        // Live diagnosis: the buffer format actually received (ARGBHalf = HDR took).
+                        GUILayout.Label(DopplerBlitter.SrcInfo);
+                    }
+                }
+            }
+
             GUILayout.EndVertical();
             GUI.DragWindow();
+        }
+
+        // One tuning-slider row: label + slider + live value. isLog: the slider drives log10(value) but
+        // the number shown is the real (10^v) value, so "beam max" reads 1..100 while sliding 0..2.
+        static float Slider(string label, double value, float min, float max, bool isLog = false)
+        {
+            var ci = CultureInfo.InvariantCulture;
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(label, GUILayout.Width(60f));
+            float f = GUILayout.HorizontalSlider((float)value, min, max, GUILayout.Width(96f));
+            GUILayout.Label((isLog ? Mathf.Pow(10f, f) : f).ToString(isLog ? "F1" : "F2", ci), GUILayout.Width(36f));
+            GUILayout.EndHorizontal();
+            return f;
         }
 
         const double YEAR = 365.25 * 86400.0, DAY = 86400.0;

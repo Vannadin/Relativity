@@ -1,8 +1,10 @@
 # Roadmap
 
 Direction for **Relativity**, roughly in priority order. Not a promise of dates — a beta's plan.
-Scope stays a **utility gameplay layer** (force/rate modulation); an authored-content or visual
-"starbow" layer is explicitly out of scope for now.
+Scope stays a **utility gameplay layer** (force/rate modulation). The **relativistic visual** has since
+been added as an optional, decoupled post-process — spectral Doppler colour, D⁴ beaming, and
+star-background aberration (galaxy cubemap). Only scaled-body aberration and authored career content
+remain out of scope for now.
 
 ## Now — stabilize the v0.1 beta (verification, not new code)
 - **Play-test the built-but-untested features**: two-clock, planner, Kerbalism resource half, attitude.
@@ -51,7 +53,8 @@ tool that estimates from reported thrust is blind to the reduction near c:
 - **Attitude model** — optional angular-acceleration (1/γ²) instead of rotation-rate (1/γ).
 
 ## Out of scope (by intent)
-- Visual/starbow/Doppler rendering layer.
+- **Scaled-body aberration** — planets/sun aren't aberrated (star background is). Optional later: detect
+  the *Deferred* mod for robust GBuffer depth/normals instead of the per-frame `depthTextureMode` request.
 - Authored career content (contracts, milestones, tutorial cards, mid-cruise events).
 
 ## How to help

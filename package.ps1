@@ -28,7 +28,7 @@ Copy-Item (Join-Path $repo "LICENSE") (Join-Path $dest "LICENSE") -Force
 
 # Strip things a player must never receive.
 Get-ChildItem $dest -Recurse -Force -Include `
-    "PluginData", "*.ConfigCache", "*.ConfigSHA", "*.pdb", "*-decompiled", ".DS_Store" |
+    "PluginData", "*.ConfigCache", "*.ConfigSHA", "*.pdb", "*-decompiled", ".DS_Store", "variants" |
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
 $zip = Join-Path $repo "bin/Relativity-$Version.zip"

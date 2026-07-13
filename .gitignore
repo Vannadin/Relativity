@@ -25,3 +25,4 @@ GameData/**/*.ConfigSHA
 
 # OS
 .DS_Store
+unity-shaders/build.log

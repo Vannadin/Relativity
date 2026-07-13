@@ -110,6 +110,124 @@ Three cheap, fail-safe guards keep the layer honest (see [[Configuration]] for t
   the glitch. The thrust correction is inherently bounded (it can never exceed full thrust cancellation),
   so the mod cannot *amplify* a kraken.
 
+## 7. What the mod models — and what it doesn't
+
+KSP is a **Newtonian, single-frame, floating-point** simulator. This mod is a force/rate *layer* on top:
+it reproduces the *feel* and the *bookkeeping* of special relativity, not its kinematics. That is a
+deliberate line, and it is worth knowing exactly where it falls — so here is the honest ledger.
+
+### Modeled (what you actually get)
+
+| Effect | How | Section |
+|--------|-----|---------|
+| Thrust collapses `1/γ³` (the light wall) | corrective force on the vessel | [§1](#1-thrust-falls-as-1γ3-the-light-wall) |
+| Crew/resource consumption slows `1/γ` (proper time) | rate scaling | [§2](#2-resource-burn-slows-as-1γ-proper-time) |
+| Radiation dose stays on coordinate time | *excluded* from the `1/γ` scaling | [§3](#3-the-twist-radiation-stays-on-coordinate-time) |
+| Turn rate slows `1/γ` | torque scaling | [§4](#4-attitude-turning-slows-as-1γ) |
+| Two clocks + a **permanent** twin-paradox gap | per-vessel proper-time integral `τ = ∫dt/γ`, persisted, ticks even while unloaded | [§2](#2-resource-burn-slows-as-1γ-proper-time) |
+| β measured against a fixed barycentric frame; auto-gated to interstellar cruise | speed sampling + `betaMin`/`betaSane`/warp guards | [§5](#5-reference-frame--the-solar-system-barycenter), [§6](#6-safety-guards) |
+
+Every one of these is a **scalar** applied to force, a rate, or a torque. That is the whole toolbox.
+
+### Not modeled (and why)
+
+These are real SR effects the mod does **not** reproduce. None of them is a bug — each is either outside
+KSP's engine or deliberately out of scope.
+
+1. **The `c` wall is not *hard*-enforced.** In reality `c` is unreachable, full stop. Here it is enforced
+   only *softly*, by the `1/γ³` thrust collapse — push by some means that isn't a force (cheat menu, a
+   kraken, an orbit-editing warp/PT mod) and KSP's Newtonian integrator will happily let the number cross
+   `c`. Above `betaSane` the mod simply stops modelling rather than pretending. So the wall is a very
+   strong disincentive, not a law of the sim.
+
+2. **No length contraction.** Ships and objects keep their rest length at any β. KSP has no mechanism for
+   it and it would not affect gameplay.
+
+3. **No relativistic optics — aberration, Doppler, the "starbow".** A real near-`c` view is beamed and
+   blueshifted forward, the star field aberrated into a tunnel ahead. The mod renders the ordinary KSP
+   sky. A visual layer is explicitly out of scope (this is a *mechanics* mod, not a shader).
+
+4. **Velocity addition is Galilean (linear).** KSP adds velocities the Newtonian way. Real SR uses the
+   relativistic sum so nothing ever crosses `c`. This shows up any time you add a small Δv at high β —
+   an EVA jump, a decouple, a docking-port shove near `c` all add **linearly** in-game.
+
+5. **One privileged frame — no relativity of simultaneity, no *mutual* dilation.** The mod dilates you
+   against a **single** barycentric frame fixed at departure ([§5](#5-reference-frame--the-solar-system-barycenter)),
+   as a scalar `1/γ`. Real SR has no privileged frame: each observer sees the *other's* clock run slow,
+   and "at the same time" is frame-dependent. So two relativistic ships here do **not** see each other
+   dilate — both are just scored against the barycenter. It is time-dilation *bookkeeping*, not a 4-D
+   Lorentz transform.
+
+6. **Felt (proper) acceleration is *not* held constant — in-game the crew feel the reduced push.** This
+   is the subtle one. In real SR an accelerometer reads a **constant** proper acceleration no matter how
+   close to `c` you are; it is only the *outside* frame that sees your acceleration die as `1/γ³` (you
+   could feel a steady 1 g forever and merely *approach* `c`). Because KSP is Newtonian, the mod delivers
+   the reduced `F/γ³` force **to the ship**, so the in-game G-meter and crew feel the `1/γ³`-reduced
+   acceleration. The mod is, in effect, applying the physical *coordinate* acceleration as though it were
+   the felt one. (This is exactly why a future constant-acceleration governor compensates for **mass
+   only**, not for γ — holding felt-g constant would fight the very mechanic in [§1](#1-thrust-falls-as-1γ3-the-light-wall).)
+
+7. **No Rindler horizon / acceleration causal structure.** A ship holding constant proper acceleration has
+   an **event horizon behind it** (at distance `c²/α` — about a light-year at 1 g). Drop something and,
+   if you keep accelerating, you *permanently* lose causal contact with it: it redshifts, freezes at the
+   horizon, and light it emits past that point never reaches you again. In-game this is pure Newtonian
+   separation — a dropped object just coasts and the ship pulls linearly ahead. No horizon, no lost
+   contact. (See the worked example below.)
+
+8. **Momentum is not conserved.** Already flagged in [§1](#1-thrust-falls-as-1γ3-the-light-wall): propellant
+   burns at the nominal rate while only `F/γ³` is delivered, so fuel→Δv efficiency silently degrades. The
+   `dv/dt` and the wall-feel are right; the momentum ledger is not exact-SR.
+
+9. **No general relativity — none.** No gravitational time dilation, no frame-dragging. The crew clock
+   responds only to *speed*, never to depth in a gravity well. (Principia adds high-fidelity *Newtonian*
+   n-body gravity, but GR time dilation is not part of this mod.)
+
+10. **No relativistic kinetic energy / collisions.** A near-`c` impact uses KSP's Newtonian KE, not the
+    relativistic value. In practice KSP disassembles anything at these speeds regardless.
+
+### Worked example — dropping a crew member near `c`
+
+A ship is cruising near `c` and still accelerating; a kerbal goes EVA. What happens?
+
+**Real special relativity.** At release the kerbal keeps the ship's current velocity and becomes an
+**inertial, free-coasting** object — no engine, so constant velocity forever.
+- *A home-frame observer* sees a near-`c` projectile: time-dilated (aging slowly), length-contracted,
+  Doppler-shifted. The ship, still burning, creeps further toward `c` (coordinate accel `α/γ³`) and pulls
+  ahead.
+- *The ship's own (accelerating) frame* sees the kerbal fall toward the **Rindler horizon** behind it —
+  slowing, reddening, freezing like matter at a black-hole horizon — and if the ship keeps accelerating it
+  can **never** receive light the kerbal emits past that moment.
+- *The kerbal* feels nothing at all — weightless, at rest in their own frame.
+
+**In-game (KSP + this mod).** The kerbal EVAs, inherits the ship's velocity, and becomes a separate
+vessel coasting at that speed — *that* part matches reality. The mod's clock keeps ticking the kerbal's
+dilated proper time even after they drift out of range and unload, so **their aging/life-support stay
+correctly slowed** — that part matches too. Everything else does not: no length contraction, no visual
+distortion, **Galilean** relative motion, no Rindler horizon (the ship just pulls linearly ahead and never
+loses contact), and the `c` wall is soft. In one line: **"inherits velocity, coasts, keeps dilating" is
+faithful; the deep kinematic and causal structure is not.**
+
+### Reality vs in-game at a glance
+
+| | Real special relativity | This mod (KSP) |
+|---|---|---|
+| Thrust vs speed | *coordinate* accel `∝1/γ³`; *felt* accel constant | net force `∝1/γ³` — **felt too** |
+| Reach `c`? | never | soft wall; the number *can* cross if forced |
+| Crew / resource clock | `dτ = dt/γ` | `×1/γ` ✓ |
+| Radiation dose | (external flux) | coordinate-time ✓ |
+| Length contraction | yes | no |
+| Aberration / Doppler visuals | yes | no |
+| Velocity addition | relativistic | Galilean (linear) |
+| Simultaneity / mutual dilation | frame-dependent, mutual | single frame, scalar |
+| Rindler horizon on accel | yes | no |
+| Momentum conservation | yes | no (abstraction) |
+| Gravitational (GR) time dilation | yes | no — SR only |
+
+**The one-sentence version:** this mod is a faithful *scalar* model of the three things that change how an
+interstellar trip **plays** — the thrust wall, the slowed crew clock, and the permanent twin-paradox gap —
+laid over a Newtonian engine that knows nothing of Lorentz transforms. It is relativity you can *feel and
+budget*, not a relativity simulator.
+
 ## See also
 
 - [[Dashboard]] — where all of this is displayed while you fly.

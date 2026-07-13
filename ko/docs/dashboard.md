@@ -6,7 +6,8 @@
 **이 문서의 정체.** 이 메커니즘의 정체성은 곧 그 표시(readout)다("플레이어는 β가 오르면서 nominal
 thrust와 effective thrust가 벌어지는 것을 본다", design.md §1). 그래서 대시보드는 장식이 아니라 일급
 설계 대상이다. 이 문서는 초안 `RelativityDashboard.cs` 스텁(`src/`)을 확장하기 위한 브리프다. 범위는
-비행 중 HUD 하나뿐이며 — 셰이더/비주얼 레이어는 다루지 않는다(design.md §2.5).
+비행 중 HUD 하나뿐이다. Tier 1 Doppler/beaming 화면 후처리는 별개 레이어이며(`src/DopplerVisual.cs`,
+design.md §2.5), 이 HUD 스펙에는 포함되지 않는다.
 
 **이 문서가 해소하는 설계 긴장.** design.md §0은 *체감* 메커니즘에는 수식이 필요 없다고 말하고, §1은
 분할 표시가 곧 정체성이라고 말한다. 답은 **2-모드 대시보드**다. 수식 없는 Simple 모드와 전체 Expert

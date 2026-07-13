@@ -21,6 +21,7 @@
   <!-- Test the pure SR core directly (no KSP/Unity deps). One source of truth with the plugin. -->
   <ItemGroup>
     <Compile Include="../../src/RelativityCore.cs" />
+    <Compile Include="../../src/RelativityOptics.cs" />
     <Compile Include="../../src/TripPlan.cs" />
     <Compile Include="../../src/ResourceScaler.cs" />
   </ItemGroup>

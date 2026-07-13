@@ -31,6 +31,25 @@ RELATIVITY
 | `attitudeSkipModules` | `ModuleControlSurface, ModuleAeroSurface, ModuleGimbal` | `ITorqueProvider` modules **not** slowed by the attitude `1/γ`. Every other torque provider (stock or modded reaction wheels / RCS) is auto-discovered and scaled — add a module here to exempt it. |
 | `rp1RetirementDilation` | `true` | **RP-1 only.** Push a crew's retirement date forward by their accumulated dilation, so retirement counts the crew's proper time rather than the calendar. Independent of RP-1's own (capped) "interesting flight" extension. |
 
+## Visual layer
+
+<!-- DRAFT (2026-07-13): pending the owner's in-game retest of the perf/correctness pass. -->
+
+The relativistic visual effects ([[Visuals]]) add their own keys to the same node. Only the
+player-facing ones are listed here — the full tuning surface (beam curve shape, floors/caps,
+white bleed, dither, sunflare shield…) is deliberately ModuleManager-only, with live dev sliders
+behind `debugMode`.
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `dopplerVisual` | `true` | Master switch — `false` never loads/applies the visual layer. |
+| `dopplerForceHDR` | `true` | Force the flight camera stack to HDR **while the layer is active** (float buffers stop the beamed sky from banding). Sub-relativistic play keeps the stock LDR stack. |
+| `dopplerColorStrength` | `1.0` | Hue-shift strength. `1.0` = physically exact timing (the sky dims aft faster than it visibly reddens); raise it to make the colour arrive ahead of the dimming. |
+| `dopplerAberration` | `true` | Star-bunching sky warp (galaxy cubemap + live rear-detail camera above β ≈ 0.5). `false` = colour/beaming only. |
+| `dopplerBodyWarp` | `true` | Also aberrate the apparent direction of planets/moons/sun (render-only; distance/size preserved). |
+| `dopplerVesselMask` | `true` | Keep engine plumes at their stock colour (hidden plume-layer render; runs only while engine/RCS thrust is flowing). `false` = plumes ride the sky effect. |
+| `dopplerSuppressScattererTAA` | `true` | Suspend Scatterer's own TAA while the visual is active (its projection jitter shimmers under beam amplification); restored after. |
+
 ## Optional / advanced
 
 - **`doseBeamingExponent`** — an optional forward-beaming boost to radiation dose at high β (models

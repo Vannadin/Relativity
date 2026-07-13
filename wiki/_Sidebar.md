@@ -3,6 +3,7 @@
 - [[Home]]
 - [[Installation]]
 - [[The Physics]]
+- [[Visuals]]
 - [[Dashboard]]
 - [[Trip Planner]]
 - [[Configuration]]

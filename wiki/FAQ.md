@@ -64,6 +64,25 @@ Correct, in this release. PT applies thrust as an orbit edit that the loaded for
 so the `1/γ³` cut for *unloaded* PT is deferred (the crew clock still tracks it). It's on the roadmap,
 paired with Principia's own persistent-thrust work. See [[Compatibility#propulsion-what-gets-you-to-relativistic-speed]].
 
+## Why is the sky changing colour at speed?
+
+That's the relativistic visual layer ([[Visuals]]): forward blueshift + brightening, aft redshift
++ dimming, star-bunching aberration, and a Doppler-shifted sunflare — what your crew would really
+see. It's cosmetic only and gates exactly like the physics (off below `betaMin`, under warp, and
+in map view). `dopplerVisual = false` turns all of it off.
+
+## The ship's outline shimmers/sparkles at high speed
+
+Almost always TUFX/PPv2 **TAA** — temporal reprojection fights the screen-space warp (no motion
+vectors) and is documented unsupported. Switch your TUFX profile to **SMAA or FXAA**; both are
+verified fine. Scatterer's own TAA is handled automatically. See [[Visuals#anti-aliasing]].
+
+## Does the visual layer cost performance?
+
+Only while it's actually on screen: everything engages with the layer (β above the gate), the
+plume mask only runs while thrust is flowing, and the rear sky camera only above β ≈ 0.5. Normal
+in-system play renders exactly stock. If you need frames at cruise, see [[Visuals#performance]].
+
 ## How do I report a bug?
 
 File an issue with your `KSP.log` (bundle it with KSPBugReport) at

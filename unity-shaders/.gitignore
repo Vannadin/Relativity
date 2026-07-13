@@ -1,0 +1,16 @@
+# Unity project for building the Doppler shader bundle — track only Assets/ (shader + editor
+# script), Packages/, ProjectSettings/, and the README. Everything below is generated.
+/Library/
+/Temp/
+/Obj/
+/obj/
+/Build/
+/Builds/
+/Logs/
+/UserSettings/
+/AssetBundles/
+.vs/
+*.csproj
+*.sln
+*.unityproj
+*.user
