@@ -44,8 +44,8 @@ mods to work under Principia — that's a Principia limitation independent of th
 ## Does it break my existing saves / non-relativistic play?
 
 No. Below `betaMin` everything is identity — the mod does literally nothing to normal in-system craft. It
-only adds a per-vessel crew-clock value to the save. Still, this is a **beta**: back up before a long
-relativistic mission.
+only adds a per-vessel crew-clock value to the save. Still, back up before a long relativistic
+mission — it's a long mission.
 
 ## Can I make the effects turn on earlier / turn attitude slowdown off?
 
@@ -86,6 +86,6 @@ in-system play renders exactly stock. If you need frames at cruise, see [[Visual
 ## How do I report a bug?
 
 File an issue with your `KSP.log` (bundle it with KSPBugReport) at
-<https://github.com/Vannadin/Relativity/issues>. The most useful beta reports: does thrust visibly
+<https://github.com/Vannadin/Relativity/issues>. The most useful reports: does thrust visibly
 fall near c, do supplies slow ~1/γ while dose does not, does attitude get sluggish, and — for RP-1 — does
 a returning relativistic crew keep their career.

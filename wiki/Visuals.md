@@ -1,9 +1,5 @@
 # Visuals
 
-> **DRAFT — not yet published.** Describes the state after the 2026-07-13 performance/correctness
-> pass, which is still awaiting the owner's in-game retest. Numbers marked *(re-measure)* are
-> intentionally blank. Remove this banner before syncing to the live wiki.
-
 Relativity ships an **optional relativistic visual layer**: what your crew would actually *see*
 near light speed. It is gameplay-decoupled — purely cosmetic, gated exactly like the physics layer
 (off below `betaMin`, under warp, and in map view, so navigation stays truthful), and the mod runs
@@ -63,9 +59,10 @@ fine with it disabled or its shader bundle absent.
 
 The layer costs nothing while sub-relativistic: the HDR camera stack, the plume mask, and the rear
 sky camera all engage only when their conditions are met (active layer / thrust flowing / β ≥ 0.5).
-Measured active cost at β ≈ 0.98: *(re-measure after the 2026-07-13 pass — the previous figures
-included costs that are now gated)*. If you need frames back, the biggest levers are
-`dopplerVesselMask = false` and a lower sky-detail setting.
+Measured active cost at β ≈ 0.98 (3440×1440): **≈ +1.7 ms** on a light craft — vessel mask +1.25 ms,
+aberration +0.3 ms, rear camera +0.15 ms. The mask renders your ship a second time, so its cost grows
+with part count; on a very large vessel it is by far the biggest slice. If you need frames back, the
+levers in order: `dopplerVesselMask = false`, then a lower sky-detail setting (VRAM, not fps).
 
 ## Troubleshooting
 

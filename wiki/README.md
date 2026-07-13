@@ -2,7 +2,7 @@
 
 These Markdown files are the **source of truth** for the project's GitHub wiki (usage + background
 theory). They are version-controlled here (the wiki repo is easy to lose) and published to the separate
-`Relativity.wiki.git` repository.
+`Relativity.wiki.git` repository (the public repo's wiki; this README stays out of the push).
 
 GitHub-wiki conventions used:
 - `Home.md` is the landing page; `_Sidebar.md` / `_Footer.md` render on every page.

@@ -5,8 +5,9 @@ relativity. It makes the light barrier *felt* — without any faster-than-light 
 force and consumption rate as a vessel approaches the speed of light. It never touches the physics
 integrator, so it rides alongside **Principia** and the stock flight model identically.
 
-> ⚠️ **v0.1.0-beta.** Core relativistic flight is verified in-game; several integrations are built but
-> not yet play-tested. Back up your save before a long relativistic mission.
+> **v1.0.0.** Core relativistic flight and the [[Visuals|visual layer]] are verified in-game. Some
+> integrations (two-clock counter, trip planner, Kerbalism dilation, RP-1) are built and compile-clean
+> but not yet play-tested — reports welcome. Back up your save before a long relativistic mission.
 
 ## The idea in two effects
 
@@ -41,7 +42,7 @@ around that tension.
 No time-warp/clock manipulation (the crew clock is a passive odometer), no general relativity, and
 **no dependency on any planet pack**. It ships no drive or parts of its own — it is a pure *layer*
 that does nothing until some other mod's high-ΔV drive actually pushes you to a relativistic speed.
-(The relativistic [[Visuals]] — once "a separate lane" — shipped post-v0.1 and are optional and
+(The relativistic [[Visuals]] — once "a separate lane" — shipped in v1.0 and are optional and
 purely cosmetic.)
 
 License: MIT. Source: <https://github.com/Vannadin/Relativity>

@@ -1,26 +1,42 @@
 # Roadmap
 
-Direction for **Relativity**, roughly in priority order. Not a promise of dates — a beta's plan.
-Scope stays a **utility gameplay layer** (force/rate modulation). The **relativistic visual** has since
-been added as an optional, decoupled post-process — spectral Doppler colour, D⁴ beaming, and
-star-background aberration (galaxy cubemap). Only scaled-body aberration and authored career content
-remain out of scope for now.
+Direction for **Relativity**, roughly in priority order. Not a promise of dates. Scope stays a
+**utility layer**: force/rate modulation for gameplay, plus the optional, fully decoupled
+**relativistic visual layer** that shipped in v1.0 (Planck-exact Doppler colour and beaming,
+star-bunching aberration with a live rear camera, body aberration, shifted sunflare). Authored
+career content remains out of scope by intent.
 
-## Now — stabilize the v0.1 beta (verification, not new code)
-- **Play-test the built-but-untested features**: two-clock, planner, Kerbalism resource half, attitude.
-- **Attitude effectiveness check** — confirm scaling `GetPotentialTorque` actually slows *applied*
-  rotation; if it only throttles the SAS estimate, move to scaling the applied reaction-wheel/RCS torque.
+## Now — finish verifying what v1.0 ships
+
+The core flight layer and the visual layer are verified in-game; these are built and compile-clean
+but still need a real playthrough:
+
+- **Play-test the untested features**: two-clock counter, VAB/SPH trip planner, Kerbalism resource
+  dilation over a long cruise. (Attitude ×1/γ is already confirmed in-game.)
 - **RP-1 pass with RP-1 installed** — verify the retirement-date reflection (field type/unit) and that
   our recovery write isn't clobbered by RP-1's own recovery handling.
 - **Timing probe** — confirm the thrust correction lands after engine deposit and before Principia's
   stage-7 sample (the LCtrl+LAlt+C census prints `part.force`); switch to a Harmony postfix if needed.
 - **Unloaded β source** — validate stock `obt_velocity`/`GetFrameVel` for on-rails vessels; the mechanic
   and clock depend on it during interstellar cruise.
+- **SpaceDock listing** (distribution follow-up; CKAN indexing is submitted).
 
-## v0.2.0 — autopilot / planner awareness of the weakened thrust
+## Visual layer — structural experiments (post-1.0)
+
+- **Sky-grade-before-the-ship redesign** (`BeforeForwardOpaque` CommandBuffer): grade the sky *before*
+  the vessel draws, dissolving the whole silhouette/edge problem class instead of masking it. Gated on
+  two cheap probes — does the near camera's colour buffer hold the sky at that event, and what happens
+  on Scatterer-Deferred installs (forward-only event). Trade-offs on record: no flare-capture fallback,
+  soft-clip moves ahead of TUFX.
+- **Deferred-mod GBuffer depth/normals** — detect the *Deferred* mod and use its GBuffer instead of the
+  per-frame `depthTextureMode` request (also unblocks the redesign above on those installs).
+
+## v1.1 — autopilot / planner awareness of the weakened thrust
+
 Because we cut thrust with a **corrective force** (to preserve fuel), the engine's *advertised* values
 (`finalThrust`, `maxThrust`, ISP) are left unchanged — only the net applied force becomes `F/γ³`. So any
 tool that estimates from reported thrust is blind to the reduction near c:
+
 - **MechJeb** — burn-time estimates and maneuver-node execution computed from thrust/mass will
   under-estimate burn time and mis-time nodes; measured-acceleration executors partially self-correct the
   burn but still show a wrong ETA/countdown.
@@ -32,6 +48,7 @@ tool that estimates from reported thrust is blind to the reduction near c:
   or grounding against their source (MuMech/MechJeb2, KSP-KOS/KOS).
 
 ## Next — integrations & fidelity
+
 - **Persistent Thrust — thrust correction.** Scale PT's unloaded Δv by 1/γ³ (Harmony on the orbit-edit
   path). **Deferred**: the owner is adding persistent-thrust support to Principia and its structure isn't
   known yet — resolve the PT thrust correction and the Principia β source together when it lands.
@@ -46,6 +63,7 @@ tool that estimates from reported thrust is blind to the reduction near c:
   metabolic rules, to keep the producer/consumer balance under dilation.
 
 ## Later — depth (opt-in)
+
 - **Forward-beamed radiation dose** (`doseBeamingExponent`) — optional γ²(1+β)² dose enhancement on top of
   the undilated baseline, strengthening the "radiation is the binding constraint" design.
 - **Off-axis thrust refinement** — γ³ along velocity, γ across, instead of the longitudinal approximation.
@@ -53,12 +71,14 @@ tool that estimates from reported thrust is blind to the reduction near c:
 - **Attitude model** — optional angular-acceleration (1/γ²) instead of rotation-rate (1/γ).
 
 ## Out of scope (by intent)
-- **Scaled-body aberration** — planets/sun aren't aberrated (star background is). Optional later: detect
-  the *Deferred* mod for robust GBuffer depth/normals instead of the per-frame `depthTextureMode` request.
+
 - Authored career content (contracts, milestones, tutorial cards, mid-cruise events).
+- FTL of any kind — this mod is about the wall, not through it.
 
 ## How to help
+
 - File issues with `KSP.log` (bundle via KSPBugReport) for any exception or wrong number.
-- The most useful beta reports: does thrust visibly fall near c, do supplies slow ~1/γ while dose does
-  not, does attitude actually get sluggish, and — for RP-1 players — does a returning relativistic crew
-  keep their career instead of retiring on the calendar.
+- The most useful reports: does thrust visibly fall near c, do supplies slow ~1/γ while dose does
+  not, does attitude actually get sluggish, how the visual layer performs on your ship/resolution
+  (the dashboard's debug foldout prints frame-ms), and — for RP-1 players — does a returning
+  relativistic crew keep their career instead of retiring on the calendar.

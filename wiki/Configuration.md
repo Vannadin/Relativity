@@ -33,8 +33,6 @@ RELATIVITY
 
 ## Visual layer
 
-<!-- DRAFT (2026-07-13): pending the owner's in-game retest of the perf/correctness pass. -->
-
 The relativistic visual effects ([[Visuals]]) add their own keys to the same node. Only the
 player-facing ones are listed here — the full tuning surface (beam curve shape, floors/caps,
 white bleed, dither, sunflare shield…) is deliberately ModuleManager-only, with live dev sliders
