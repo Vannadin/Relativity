@@ -15,7 +15,8 @@ yet, indexing may still be in review - use the manual install below meanwhile.)
 ## Manual install
 
 1. Download the release zip from the
-   [Releases page](https://github.com/Vannadin/Relativity/releases).
+   [Releases page](https://github.com/Vannadin/Relativity/releases) or
+   [SpaceDock](https://spacedock.info/mod/4404/Relativity).
 2. Unzip it into your KSP install so the folder lands at `GameData/Relativity/`.
 3. Install **Harmony** separately (from CKAN as `Harmony2`, or the HarmonyKSP release) so
    `GameData/000_Harmony/` exists.

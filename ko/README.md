@@ -48,8 +48,9 @@ KSP 1.12.x용 특수상대성 모드입니다. 다른 모드의 드라이브가 
 
 KSP 1.12.x와 Harmony(`Harmony2` on CKAN / HarmonyKSP)가 필요합니다.
 
-CKAN에서는 *Relativity*를 설치하면 Harmony가 자동으로 따라옵니다. 수동 설치는 릴리즈 zip을 받아
-KSP 설치 폴더에 풀어 `GameData/Relativity/`가 되게 놓고, Harmony를 따로 설치합니다. Kerbalism과
+CKAN에서는 *Relativity*를 설치하면 Harmony가 자동으로 따라옵니다. 수동 설치는
+[GitHub](https://github.com/Vannadin/Relativity/releases) 또는 [SpaceDock](https://spacedock.info/mod/4404/Relativity)에서
+릴리즈 zip을 받아 KSP 설치 폴더에 풀어 `GameData/Relativity/`가 되게 놓고, Harmony를 따로 설치합니다. Kerbalism과
 RP-1 통합은 해당 모드가 있으면 알아서 켜집니다.
 
 ## 설정

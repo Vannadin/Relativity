@@ -19,7 +19,7 @@ but still need a real playthrough:
   stage-7 sample (the LCtrl+LAlt+C census prints `part.force`); switch to a Harmony postfix if needed.
 - **Unloaded β source**: validate stock `obt_velocity`/`GetFrameVel` for on-rails vessels; the mechanic
   and clock depend on it during interstellar cruise.
-- **SpaceDock listing** (distribution follow-up; CKAN indexing is submitted).
+- **SpaceDock listing** — live at [mod/4404](https://spacedock.info/mod/4404/Relativity). CKAN indexing is submitted.
 
 ## Visual layer - structural experiments (post-1.0)
 

@@ -50,8 +50,9 @@ the trip. You pick a cruise speed around that tension.
 
 You need KSP 1.12.x and Harmony (`Harmony2` on CKAN / HarmonyKSP).
 
-CKAN: install *Relativity*, Harmony comes along automatically. Manual: grab the release zip, unzip
-into your KSP install so the folder lands at `GameData/Relativity/`, install Harmony separately.
+CKAN: install *Relativity*, Harmony comes along automatically. Manual: grab the release zip from
+[GitHub](https://github.com/Vannadin/Relativity/releases) or [SpaceDock](https://spacedock.info/mod/4404/Relativity),
+unzip into your KSP install so the folder lands at `GameData/Relativity/`, install Harmony separately.
 Kerbalism and RP-1 integrations turn themselves on if those mods are present.
 
 ## Configuration
