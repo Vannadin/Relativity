@@ -3,7 +3,7 @@
 [CmdletBinding()]
 param(
     # Version label used in the output zip name. Keep in sync with src/Relativity.csproj <Version> and the CHANGELOG.
-    [string]$Version = "0.1.0-beta"
+    [string]$Version = "1.1.0"
 )
 $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -30,6 +30,16 @@ Copy-Item (Join-Path $repo "LICENSE") (Join-Path $dest "LICENSE") -Force
 Get-ChildItem $dest -Recurse -Force -Include `
     "PluginData", "*.ConfigCache", "*.ConfigSHA", "*.pdb", "*-decompiled", ".DS_Store", "variants" |
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+# Release gate in the STAGED copy only: debugMode must never ship enabled, whatever the dev
+# working cfg currently says (it gets flipped on and off during test sessions).
+$cfgPath = Join-Path $dest "relativity.cfg"
+$cfgText = Get-Content $cfgPath -Raw
+$patched = $cfgText -replace '(?m)^(\s*debugMode\s*=\s*)true', '${1}false'
+if ($patched -ne $cfgText) {
+    Set-Content $cfgPath $patched -Encoding utf8 -NoNewline
+    Write-Host "==> staged cfg: debugMode forced to false for release" -ForegroundColor Yellow
+}
 
 $zip = Join-Path $repo "bin/Relativity-$Version.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }

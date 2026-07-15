@@ -11,7 +11,7 @@ namespace Relativity
     {
         public const double C        = 299792458.0; // m/s
         public const double BetaMin  = 0.01;         // §2.6(i) activation gate
-        public const double BetaSane = 0.995;        // §2.6(iii) kraken fail-safe ceiling
+        public const double BetaSane = 0.999;        // §2.6(iii) kraken fail-safe ceiling. 0.995 → 0.999 (owner, 2026-07-15): FFT-torch cruise legitimately reaches β≈0.994, and above the ceiling the layer DISABLES — handing full thrust back exactly at the barrier — so the ceiling must sit outside legit reach (γ≈22 is safe throughout; cfg clamp already allowed 0.9999)
 
         public struct State
         {

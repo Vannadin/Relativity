@@ -607,6 +607,201 @@ Shader "Relativity/DopplerVisual"
             }
             ENDCG
         }
+
+        // Pass 5 — SKY GRADE (pre-ship prototype, 2nd review item B). Runs from a CommandBuffer at
+        // BeforeForwardOpaque (forward) / BeforeGBuffer (deferred), when the near camera's buffer
+        // holds ONLY the composited sky (galaxy — already aberration-warped upstream — + scaled
+        // bodies): the ship, plumes and flare draw AFTER this grade, on top, with their stock look.
+        // Everything pass 0 does to separate them from the sky (depth cover, hull ramp + fringe
+        // rebuild, vessel mask, flare subtract/re-add, sun shield, SMAA alpha) is structurally
+        // unnecessary here — this is the same grade, minus the whole edge/masking machinery.
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vertSky
+            #pragma fragment fragSky
+            #include "UnityCG.cginc"
+
+            float _FlipSky;   // 1 = mirror the OUTPUT position (Y-axis insurance for the
+                              // CommandBuffer round-trip; same trick as _Flip0/_FlipOut)
+            v2f_img vertSky(appdata_img v)
+            {
+                v2f_img o = (v2f_img)0;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                if (_FlipSky > 0.5) o.pos.y = -o.pos.y;
+                o.uv = v.texcoord;
+                return o;
+            }
+
+            sampler2D _MainTex;
+            float _Beta, _Gamma, _Intensity, _BeamingExponent, _BeamMin, _BeamMax, _PlanckBeam, _WhiteBleed, _Dither, _ColorStrength, _HighlightGuard;
+            float _BeamCap;
+            float _DebugView;              // 0=off 1=beam 2=srcLum (views 3-6 are pass-0 machinery)
+            float4   _VelDirWorld;
+            float4x4 _InvProj;
+            float4x4 _CamToWorld;
+
+            float3 WorldRay(float2 uv)
+            {
+                float4 v = mul(_InvProj, float4(uv * 2.0 - 1.0, 1.0, 1.0));
+                return normalize(mul((float3x3)_CamToWorld, normalize(v.xyz / v.w)));
+            }
+
+            float3 Blackbody(float t)
+            {
+                t = clamp(t, 1000.0, 40000.0) / 100.0;
+                float r = (t <= 66.0) ? 1.0 : saturate(1.29293618 * pow(t - 60.0, -0.1332047592));
+                float g = (t <= 66.0) ? saturate(0.39008157 * log(t) - 0.63184144)
+                                      : saturate(1.12989086 * pow(t - 60.0, -0.0755148492));
+                float b = (t >= 66.0) ? 1.0 : (t <= 19.0 ? 0.0 : saturate(0.54320679 * log(t - 10.0) - 1.19625409));
+                return float3(r, g, b);
+            }
+            static const float3 BB6500 = float3(1.0, 0.99651, 0.98056);
+            float3 DopplerColor(float D) { return Blackbody(6500.0 * D) / BB6500; }
+
+            float3 SoftClip(float3 c)
+            {
+                float m = max(max(c.r, c.g), c.b);
+                if (m <= 1.0) return c;
+                float w = 1.0 - exp(-(m - 1.0) * _WhiteBleed);
+                return lerp(c / m, float3(1.0, 1.0, 1.0), w);
+            }
+
+            float4 fragSky(v2f_img i) : SV_Target
+            {
+                float4 col = tex2D(_MainTex, i.uv);
+
+                // Dither before beaming amplifies quantization (same rationale as pass 0).
+                float ign = frac(52.9829189 * frac(dot(floor(i.uv * _ScreenParams.xy),
+                                                       float2(0.06711056, 0.00583715))));
+                col.rgb = max(col.rgb + (ign - 0.5) * (_Dither / 255.0), 0.0);
+
+                float3 ray  = WorldRay(i.uv);
+                float  mu   = dot(ray, _VelDirWorld.xyz);
+                float  D    = 1.0 / max(_Gamma * (1.0 - _Beta * mu), 1e-4);
+                float3 tint = DopplerColor(pow(D, _ColorStrength));
+                float  beam;
+                if (_PlanckBeam > 0.5)
+                {
+                    const float x = 4.0247;
+                    beam = (exp(x) - 1.0) / max(exp(min(x / D, 80.0)) - 1.0, 1e-6);
+                    beam = max(beam, _BeamMin);
+                }
+                else
+                {
+                    float raw = pow(D, _BeamingExponent);
+                    beam = max(_BeamMax * (1.0 - exp(-raw / _BeamMax)), _BeamMin);
+                }
+                beam = min(beam, _BeamCap);
+
+                // Highlight guard (calibrated v1): amplification fades on already-bright sources so
+                // bright stars stay points. The sun DISC is graded here too — at high β guard v1
+                // holds it near raw while the sky beams past it (the round-6 inversion), but the
+                // stock flare draws AFTER this grade at every β and covers the disc, the same way
+                // it hid the inversion in rounds 1-5. Revisit only if the A/B shows it.
+                float srcLum = max(max(col.r, col.g), col.b);
+                float guardT = 1.0 - smoothstep(0.6, 1.0, srcLum);
+                beam = lerp(beam, min(beam, 1.0) + max(beam - 1.0, 0.0) * guardT, _HighlightGuard);
+
+                if (_DebugView > 0.5 && _DebugView < 2.5)
+                {
+                    if (_DebugView < 1.5) col.rgb = saturate(log2(max(beam, 1e-4)) / 10.0 + 0.5).xxx;
+                    else                  col.rgb = saturate(srcLum).xxx;
+                    return float4(col.rgb, 1.0);
+                }
+
+                float3 lit = SoftClip(col.rgb * tint * beam);
+                col.rgb = max(lerp(col.rgb, lit, _Intensity), 0.0);
+                return float4(col.rgb, 1.0);
+            }
+            ENDCG
+        }
+
+        // Pass 6 — FLARE SHIFT under the sky-grade path (owner pick 2026-07-15). With SG the
+        // flare draws AFTER the grade, fully stock — this thin pass re-applies the rounds-9-12
+        // flare rule and nothing else: capture (ScattererFlareCapture) → subtract → re-add with
+        // the one-D recolor (round 10) through the soft-additive operator (round 11). Aft it
+        // reddens+dims, forward it blue-tints at original brightness (w ≤ 1), hull overlap
+        // shifts too (the re-add covers hull and sky alike — no mask needed). No residual synth:
+        // the sky here is ALREADY graded, so no post-subtraction amplification exists to stretch
+        // the residual into banding — the round-10 failure class is unconstructible on this path.
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert_img
+            #pragma fragment fragFlare
+            #include "UnityCG.cginc"
+
+            sampler2D _MainTex;
+            sampler2D _FlareTex;
+            float  _FlareFlip;
+            float4 _FlareTintBeam;   // xyz = one-D Doppler tint at the sun's observed bearing, w = beam floored+capped ≤1
+            float  _Intensity;
+            float  _FlareWhiteBleed; // flare-own overexposure transfer, SEPARATE from the sky's _WhiteBleed (owner request)
+            float  _FlareSuppressed; // 1 = the source draw was disabled this frame (suppress-and-redraw): the frame is already clean, the un-blend must not run
+
+            float4 fragFlare(v2f_img i) : SV_Target
+            {
+                float4 col = tex2D(_MainTex, i.uv);
+                float2 fuv = i.uv;
+                if (_FlareFlip > 0.5) fuv.y = 1.0 - fuv.y;
+                float3 F = tex2D(_FlareTex, fuv).rgb;
+                float  fmax = max(F.r, max(F.g, F.b));
+                if (fmax <= 0.001) return float4(col.rgb, 1.0);
+
+                float3 clean;
+                if (_FlareSuppressed > 0.5)
+                {
+                    // Suppress-and-redraw (owner decision 2026-07-15, 3-agent investigation):
+                    // the source draw was disabled this frame, so the frame IS the clean
+                    // background — no un-blend, no divisor, no hue pin. The whole mismatch
+                    // class (TUFX grades the frame before OnRenderImage while the capture is
+                    // raw; TAA blends history the single-frame capture lacks) never runs.
+                    clean = col.rgb;
+                }
+                else
+                {
+                    // Un-blend FALLBACK (first suppression frame, or suppress toggled off): the
+                    // flare was composited soft-additively (col = F + dst·(1−F)), so recover the
+                    // background by the inverse division. Divisor floor 0.1: exact to F=0.9 (a
+                    // 0.5 floor under-recovered the HULL beneath the flare and darkened the
+                    // overlap aft); the ×10 mismatch amplification in the last sliver is safe —
+                    // nothing amplifies after this pass.
+                    clean = max(col.rgb - F, 0.0) / max(1.0 - F, 0.1);
+                    // Core hue pin, EXTREME core only (0.85–0.98): where recovery is truly
+                    // information-lost (F→1), pin the hue to the sky's Doppler hue at the sun's
+                    // bearing, luminance from the recovery — the ghost has no hue left to live
+                    // in. Must NOT reach hull-overlap pixels (halo-range F).
+                    float3 skyHue = _FlareTintBeam.rgb
+                                  / max(max(_FlareTintBeam.r, max(_FlareTintBeam.g, _FlareTintBeam.b)), 1e-3);
+                    float cleanLum = max(clean.r, max(clean.g, clean.b));
+                    clean = lerp(clean, skyHue * cleanLum,
+                                 smoothstep(0.85, 0.98, fmax) * _Intensity);
+                }
+                // One-D recolor (round 10): a per-channel multiply cannot blue-shift a saturated
+                // orange flare — blend its hue toward the blackbody hue as the tint departs white.
+                float3 ftint = _FlareTintBeam.rgb;
+                float  tintSat = 1.0 - min(ftint.r, min(ftint.g, ftint.b))
+                                     / max(max(ftint.r, max(ftint.g, ftint.b)), 1e-3);
+                float3 shifted = ftint * lerp(F, fmax.xxx, smoothstep(0.05, 0.4, tintSat))
+                               * _FlareTintBeam.w;
+                // Flare-own white bleed (separate knob): an overbright shifted core bleeds toward
+                // white instead of per-channel clipping, which distorts the hue exactly at the
+                // brightest pixels. Applied to the SHIFTED colour only — the original F (intensity
+                // 0) keeps whatever Scatterer drew.
+                float sm = max(shifted.r, max(shifted.g, shifted.b));
+                if (sm > 1.0)
+                {
+                    float wgt = 1.0 - exp(-(sm - 1.0) * _FlareWhiteBleed);
+                    shifted = lerp(shifted / sm, float3(1.0, 1.0, 1.0), wgt);
+                }
+                float3 fs = saturate(lerp(F, shifted, _Intensity));
+                // Scatterer's own soft-additive operator (round 11): self-limiting over bright
+                // sky, and at low β it recomposites the flare exactly as Scatterer drew it.
+                return float4(fs + clean * (1.0 - fs), 1.0);
+            }
+            ENDCG
+        }
     }
     Fallback Off
 }

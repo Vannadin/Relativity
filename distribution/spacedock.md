@@ -21,8 +21,9 @@ Since v1.0 there is also an optional visual layer showing what the crew would ac
 ahead blueshifts and brightens (Planck-exact Doppler colour and beaming), the sky behind reddens and
 dims, the starfield bunches toward your heading (the "starbow", with a live rear camera keeping the
 magnified aft sky sharp), and planets, sun and sunflare shift to their aberrated bearings. Purely
-cosmetic, gated like the physics, off in map view so navigation stays truthful. Costs about
-+1.7 ms/frame on a light craft.
+cosmetic, gated like the physics, off in map view so navigation stays truthful. Since v1.1 the sky
+is graded before the ship draws, which keeps the ship, plumes and sunflare stock by construction,
+coexists with Scatterer's TAA, and made the layer measurably faster.
 
 The mod modulates force and consumption rate only. It never rewrites the physics integrator, which
 is what makes it safe alongside Principia and identical on the stock flight model.
@@ -43,7 +44,7 @@ is what makes it safe alongside Principia and identical on the stock flight mode
 - Harmony (`Harmony2`), required
 
 ### Status
-v1.0.0: core relativistic flight and the visual layer are verified in-game. Some integrations
+v1.1.0: core relativistic flight and the visual layer are verified in-game. Some integrations
 (two-clock counter, trip planner, Kerbalism dilation, RP-1) are built and compile-clean but not yet
 play-tested; reports on the GitHub issue tracker are very welcome. Back up your save before a long
 relativistic mission.

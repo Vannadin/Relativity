@@ -245,28 +245,22 @@ namespace Relativity
                             + " · rear " + (DopplerVisual.RearLive
                                 ? DopplerVisual.RearSize + "² fov " + DopplerVisual.RearFovDeg.ToString("F0", ci2) + "°"
                                 : "off")
-                            + " · cube " + (DopplerVisual.CubeReady ? DopplerVisual.CubeFace + "/face" : "NOT READY"));
+                            + " · cube " + (DopplerVisual.CubeReady ? DopplerVisual.CubeFace + "/face" : "NOT READY")
+                            + (DopplerVisual.SkyGradeLive ? " · grade PRE-SHIP · " + DopplerBlitter.SgFlareInfo
+                                + " · w=" + DopplerBlitter.SgFlareW.ToString("F2", ci2) : ""));
                         RelativityConfig.DopplerVesselMask = GUILayout.Toggle(RelativityConfig.DopplerVesselMask, "vessel mask (plumes)");
-                        RelativityConfig.DopplerVesselMaskFlipY = GUILayout.Toggle(RelativityConfig.DopplerVesselMaskFlipY, "vessel mask flip Y");
-                        RelativityConfig.DopplerSuppressScattererTAA = GUILayout.Toggle(RelativityConfig.DopplerSuppressScattererTAA, "suspend Scatterer TAA");
-                        RelativityConfig.DopplerPlanckBeam = GUILayout.Toggle(RelativityConfig.DopplerPlanckBeam, "Planck beam (exact eye-band)");
-                        if (!RelativityConfig.DopplerPlanckBeam)
-                        {
-                            RelativityConfig.DopplerBeaming = Slider("beam exp",  RelativityConfig.DopplerBeaming, 0f, 6f);
-                            float lg = Slider("beam max", Mathf.Log10((float)RelativityConfig.DopplerBeamMax), 0f, 2f, true);
-                            RelativityConfig.DopplerBeamMax = Mathf.Pow(10f, lg);
-                        }
+                        // Retired knobs (owner, 2026-07-15): the Planck-beam fallback pair
+                        // (beam exp / beam max), sun mask°, flare shift and hull ramp are gone
+                        // entirely — settled values hardwired at their DopplerBlitter call sites,
+                        // cfg keys deleted (they tuned the cone/normal-path fallbacks only).
                         RelativityConfig.DopplerBeamMin   = Slider("beam min",  RelativityConfig.DopplerBeamMin, 0f, 1f);
                         RelativityConfig.DopplerWhiteBleed = Slider("white bleed", RelativityConfig.DopplerWhiteBleed, 0f, 1f);
                         RelativityConfig.DopplerDither    = Slider("dither",    RelativityConfig.DopplerDither, 0f, 4f);
-                        RelativityConfig.DopplerSunMaskDeg = Slider("sun mask°", RelativityConfig.DopplerSunMaskDeg, 0f, 40f);
-                        // Flare shift window (1 = the flare's hull-overlapping half shifts with its
-                        // sky half; 0 = sky half only → expect the silhouette seam) and the
-                        // forward-headlight pair: scale drives how fast β lights the hull, max
-                        // is the asymptotic ceiling — the overexposure sweet-spot lives on these two.
+                        RelativityConfig.DopplerCubeMipBias = Slider("cube mip", RelativityConfig.DopplerCubeMipBias, -4f, 0f);
                         RelativityConfig.DopplerFlareSeparate = GUILayout.Toggle(RelativityConfig.DopplerFlareSeparate, "flare separation (Scatterer, additive)");
-                        RelativityConfig.DopplerFlareFlipY    = GUILayout.Toggle(RelativityConfig.DopplerFlareFlipY, "flare flip Y");
-                        RelativityConfig.DopplerSunFlareShift = Slider("flare shift", RelativityConfig.DopplerSunFlareShift, 0f, 1f);
+                        // SG flare pass only: the shifted flare core's own white bleed (separate
+                        // from the sky's) — 0 = hue-preserving normalize, 1 = eye-like bleed.
+                        RelativityConfig.DopplerFlareWhiteBleed = Slider("flare bleed", RelativityConfig.DopplerFlareWhiteBleed, 0f, 1f);
                         // Sunlight toggle = re-aim to the warped sun + Doppler dim/tint, so hull
                         // shading matches the screen.
                         RelativityConfig.DopplerSunlight      = GUILayout.Toggle(RelativityConfig.DopplerSunlight, "Doppler sunlight (warp + dim)");
@@ -277,19 +271,26 @@ namespace Relativity
                         // which stabilizer the hull-edge jitter rides on.
                         RelativityConfig.DopplerHighlightGuard = Slider("hl guard", RelativityConfig.DopplerHighlightGuard, 0f, 1f);
                         RelativityConfig.DopplerBeamCap   = Slider("beam cap",  RelativityConfig.DopplerBeamCap, 1f, 32f);
-                        RelativityConfig.DopplerHullRamp  = Slider("hull ramp", RelativityConfig.DopplerHullRamp, 0.5f, 32f);
                         RelativityConfig.DopplerEdgeAA    = Slider("edge AA",   RelativityConfig.DopplerEdgeAA, 0f, 1f);
-                        // Diagnosis views: 1 beam, 2 srcLum, 3 mask (shader channels, SMAA bypassed);
-                        // 4 SMAA edges RT, 5 SMAA weights RT (chain innards); 6 captured flare RT.
-                        RelativityConfig.DopplerDebugView = Mathf.Round(Slider("debug view", RelativityConfig.DopplerDebugView, 0f, 6f));
+                        // Diagnosis views, SG-relevant only (owner de-clutter 2026-07-15): UI 0-3
+                        // maps 3 → internal 6 (captured flare RT) — the shader/blitter numbering
+                        // is unchanged. Views 3-5 (mask / SMAA innards) were normal-path machinery
+                        // and retire from the UI with it (session-only value, no cfg key).
+                        float dbgUi = RelativityConfig.DopplerDebugView == 6.0 ? 3f
+                            : Mathf.Min((float)RelativityConfig.DopplerDebugView, 3f);
+                        dbgUi = Mathf.Round(Slider("debug view", dbgUi, 0f, 3f));
+                        RelativityConfig.DopplerDebugView = dbgUi == 3f ? 6.0 : dbgUi;
                         RelativityConfig.DopplerIntensity = Slider("intensity", RelativityConfig.DopplerIntensity, 0f, 1f);
                         // Aberration debug: axis-convention insurance, settled in-game without a rebuild.
                         // Master switch first: off = colour/beaming only (kills sky warp + rear cam +
                         // body warp in one flip) — the pre-distortion state, for shimmer bisection.
                         RelativityConfig.DopplerAberration = GUILayout.Toggle(RelativityConfig.DopplerAberration, "aberration (sky warp + rear cam)");
-                        RelativityConfig.DopplerAberrFlipY = GUILayout.Toggle(RelativityConfig.DopplerAberrFlipY, "aberration flip Y");
-                        RelativityConfig.DopplerRearFlipY  = GUILayout.Toggle(RelativityConfig.DopplerRearFlipY, "rear-cam flip Y");
+                        // Rear-pole sharpness ↔ RT size lever (the ground-truth line shows the
+                        // resulting N²); calibrate against the profiler if fps moves.
+                        RelativityConfig.DopplerRearDensity = Slider("rear dens", RelativityConfig.DopplerRearDensity, 1f, 6f);
                         RelativityConfig.DopplerBodyWarp   = GUILayout.Toggle(RelativityConfig.DopplerBodyWarp, "body aberration");
+                        // Path switch: off = the pre-promotion post-frame path (one-release fallback).
+                        RelativityConfig.DopplerSkyGrade = GUILayout.Toggle(RelativityConfig.DopplerSkyGrade, "sky grade @ pre-ship");
                         // Live diagnosis: the buffer format actually received (ARGBHalf = HDR took).
                         GUILayout.Label(DopplerBlitter.SrcInfo);
                     }

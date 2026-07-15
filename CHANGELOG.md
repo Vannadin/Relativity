@@ -3,6 +3,50 @@
 All notable changes to **Relativity** are recorded here. This mod follows a simple
 `MAJOR.MINOR.PATCH` scheme; pre-1.0 releases are betas and may change behavior between versions.
 
+## v1.1.0 - 2026-07-15
+
+The sky-grade release: the visual layer's grade now runs **before the ship draws**, which makes it
+faster, TAA-friendly, and structurally simpler - plus a forward-sky quality pass and a large
+scaffolding cleanup.
+
+- **Pre-ship sky grade is the default path** (`dopplerSkyGrade = true`): a CommandBuffer on the near
+  camera grades the sky at BeforeForwardOpaque, so the ship, plumes and sunflare keep their stock
+  look by draw order - the depth mask, plume-mask camera, silhouette SMAA chain and sunflare shield
+  of the post-frame architecture are all dormant on it. Measured on a heavy burning craft (pinned
+  A/B, 3440×1440): **4.7 ms faster** than the old path, and never slower. The old path stays for one
+  release as `dopplerSkyGrade = false`.
+- **Scatterer TAA coexists** - the grade happens before the TAA stage, so Scatterer's TAA smooths
+  the graded sky instead of shimmering against it (leave it on; it also grinds the anti-banding
+  star noise smooth). The suspension adapter and `dopplerSuppressScattererTAA` are removed.
+- **Sunflare: suppress-and-redraw** - Scatterer's flare mesh is disabled at the source each frame,
+  captured alone, and re-added Doppler-tinted by a dedicated pass: red and dim aft, held at original
+  brightness forward, hull overlap included, occlusion/fade preserved. Any capture surprise degrades
+  to the stock flare within one frame.
+- **Forward-sky quality** - the galaxy cube is now float (R11G11B10) **with mips**: forward
+  aberration is minification, and derivative-LOD sampling averages the bunched starfield per pixel
+  instead of shimmering. `dopplerCubeMipBias` (default −3) trades star noise against banding - the
+  noise also masks the skybox's own 8-bit gradient steps. The capture is guarded end to end: a VRAM
+  budget with a logged downgrade, an explicit create check (an out-of-VRAM cube used to log
+  "captured" and sample black), and a device-loss re-capture re-arm.
+- **Rear-pole sharpness** - the exact aft-of-travel direction was undersampled at every cruise β
+  (rear-pole magnification × cone width is nearly β-independent, so no cube resolution could fix
+  it); the rear RT now sizes from screen pixel density × `dopplerRearDensity` (default 4), cap
+  raised to 4096.
+- **Review round over the whole epic** (8 finder + 10 verifier agents): fixed a per-frame
+  `Debug.Log` on the flare path (KSP.log growth and a stutter contributor), a one-frame double
+  flare on mid-scene flare-renderer recreation, debug-view contamination under the sky grade, and
+  two paths' worth of duplicated grade-uniform binds.
+- **Removed cfg keys** (their settled values are hardwired; stale keys in an old cfg are ignored
+  harmlessly): `dopplerSuppressScattererTAA`, `dopplerFlareSuppress`, `dopplerPlanckBeam`,
+  `dopplerBeaming`, `dopplerBeamMax`, `dopplerSunMaskDeg`, `dopplerSunFlareShift`,
+  `dopplerHullRamp`, and the five `*FlipY` debug keys. **New keys**: `dopplerSkyGrade`,
+  `dopplerRearDensity`, `dopplerCubeMipBias`, `dopplerFlareWhiteBleed`.
+- Dev scaffolding removed (probe addon, A/B toggles, the shader-variants kit), dashboard debug
+  panel de-cluttered to the knobs that still do something.
+- **`betaSane` default raised 0.995 → 0.999.** Torch drives legitimately cruise near β = 0.994,
+  and above the ceiling the layer disables - which hands full thrust back exactly at the barrier.
+  The ceiling now sits outside legitimate reach (γ ≈ 22 is numerically safe throughout).
+
 ## v1.0.0 - 2026-07-14
 
 The visual layer ships, in-game verified end to end: the toggle ladder measured the whole layer at

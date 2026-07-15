@@ -42,26 +42,28 @@ fine with it disabled or its shader bundle absent.
   faces. The aft cone itself is re-rendered live by the rear camera and stays sharp at any setting.
   Cube resolution costs VRAM and a one-off capture hitch, not frame rate - **4096** is the
   recommended fixed choice if Auto looks soft to the sides.
-- `relativity.cfg` player keys: `dopplerVisual`, `dopplerForceHDR`, `dopplerColorStrength`,
-  `dopplerAberration`, `dopplerBodyWarp`, `dopplerVesselMask`, `dopplerSuppressScattererTAA` -
-  see [[Configuration#visual-layer]]. The full tuning surface (beam curve, floors/caps, dither…)
-  is ModuleManager-only, with live dev sliders behind `debugMode`.
+- `relativity.cfg` player keys: `dopplerVisual`, `dopplerSkyGrade`, `dopplerForceHDR`,
+  `dopplerColorStrength`, `dopplerAberration`, `dopplerBodyWarp`, `dopplerVesselMask` -
+  see [[Configuration#visual-layer]]. The remaining tuning surface (beam floor/cap, white bleed,
+  dither, cube mip bias…) is ModuleManager-only, with live dev sliders behind `debugMode`.
 
 ## Anti-aliasing (read this if the ship edge shimmers)
 
 - **TUFX / PPv2 TAA is unsupported.** Temporal history reprojection fights a motion-vector-less
   screen warp - the ship silhouette will shimmer. Use **SMAA or FXAA** in your TUFX profile; both
-  are verified fine. The layer runs its own silhouette SMAA regardless.
-- **Scatterer's own TAA** (on by default in *Scatterer's* settings) is suspended automatically
-  while the visual is active and handed back after (`dopplerSuppressScattererTAA`).
+  are verified fine.
+- **Scatterer's own TAA is fine** since 1.1.0: the sky is graded before the ship draws, so
+  Scatterer TAA smooths the graded sky instead of fighting it (it is actually what grinds the
+  anti-banding star noise smooth - leave it on).
 
 ## Performance
 
-The layer costs nothing while sub-relativistic: the HDR camera stack, the plume mask, and the rear
-sky camera all engage only when their conditions are met (active layer / thrust flowing / β ≥ 0.5).
-Measured active cost at β ≈ 0.98 (3440×1440): **≈ +1.7 ms** on a light craft - vessel mask +1.25 ms,
-aberration +0.3 ms, rear camera +0.15 ms. The mask renders your ship a second time, so its cost grows
-with part count; on a very large vessel it is by far the biggest slice. If you need frames back, the
+The layer costs nothing while sub-relativistic: the HDR camera stack and the rear sky camera engage
+only when their conditions are met (active layer / β ≥ 0.5). The 1.1.0 default path grades the sky
+before the ship draws, so there is no second ship render and no screen-space mask work at all - on a
+heavy burning craft it measured **4.7 ms faster** than the pre-1.1 path (pinned A/B, 3440×1440), and
+it never measured slower. The old figures (+1.7 ms on a light craft, vessel mask dominating with part
+count) apply only to the `dopplerSkyGrade = false` fallback. If you need frames back there, the
 levers in order: `dopplerVesselMask = false`, then a lower sky-detail setting (VRAM, not fps).
 
 ## Troubleshooting

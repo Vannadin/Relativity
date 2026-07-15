@@ -223,14 +223,18 @@ gameplay:
   `(e^x−1)/(e^{x/D}−1)`, `x = hc/(λk·6500K) ≈ 4.02` at 550nm - slope ~D⁴ near D=1, asymptotically
   linear toward c (the energy escapes to UV), exponentially dark aft with a visibility floor.
   Stability rails on top of the physics: overexposure bleeds to white like a camera (`whiteBleed`),
-  a highlight guard + amplification cap + sunflare shield + hull-silhouette ramp keep bright sources
-  and the ship outline from blowing out or shimmering, and pre-beaming dither masks 8-bit skybox
-  quantization. The camera stack (galaxy/scaled/near) is **forced to HDR** while the layer is
-  active (sub-relativistic play keeps the stock LDR stack) - float buffers kill gradient banding
-  at the source; the shader's soft-clip acts as the tonemapper stock
-  lacks. The co-moving ship is depth-masked out. Player knobs: `dopplerForceHDR`,
+  a highlight guard + amplification cap keep bright sources stable, and pre-beaming dither masks
+  8-bit skybox quantization. The camera stack (galaxy/scaled/near) is **forced to HDR** while the
+  layer is active (sub-relativistic play keeps the stock LDR stack) - float buffers kill gradient
+  banding at the source; the shader's soft-clip acts as the tonemapper stock lacks.
+  **Since 1.1.0 the grade runs BEFORE the ship draws** (a CommandBuffer on the near camera at
+  BeforeForwardOpaque): the ship, plumes and sunflare keep their stock look by draw order, so the
+  depth mask, plume-mask camera, silhouette SMAA chain and sunflare shield of the original
+  post-frame architecture are all unnecessary on the default path. The post-frame path (co-moving
+  ship depth-masked out of the finished frame) remains as a one-release cfg fallback
+  (`dopplerSkyGrade = false`). Player knobs: `dopplerSkyGrade`, `dopplerForceHDR`,
   `dopplerColorStrength` (1.0 = physically exact hue timing); the curve itself is fixed
-  (owner-calibrated), with the full surface as MM-only keys.
+  (owner-calibrated), with the remaining surface as MM-only keys.
 - **Tier 2 - starbow aberration (SHIPPED, post-v0.1, v2 architecture).** The warp runs **on the galaxy
   camera only**, which draws nothing but the skybox - pure replacement is structurally safe, and
   planets/sun/plumes/ship composite on top untouched (the v1 near-camera additive-difference composite
@@ -238,17 +242,21 @@ gameplay:
   direction `cos θ_src = (cos θ − β)/(1 − β cos θ)`. Cube size is a stock settings-screen choice
   (Auto/1024–8192; Auto measures the installed skybox, TextureReplacer included, capped 4096; clamped
   to the GPU's cubemap ceiling). Above β ≈ 0.5 a **live rear camera** (FOV = 2·acos β, square RT
-  sized from the screen's pixel density over the source cone, pow2 buckets 512–4096)
-  re-renders the aft sky each frame - the rear pole magnifies by (1+β)/(1−β), which no static cube can
-  follow - and crossfades into the cube at its cone edge. Optional (`dopplerAberration`).
+  sized from the screen's pixel density over the source cone × `dopplerRearDensity`, 512-step
+  buckets up to 4096) re-renders the aft sky each frame - the rear pole magnifies by (1+β)/(1−β),
+  which no static cube can follow - and crossfades into the cube at its cone edge. The cube itself
+  is float (R11G11B10) with mips: the forward compression is minification, and derivative-LOD mip
+  sampling (biased by `dopplerCubeMipBias`) averages the bunched starfield per pixel instead of
+  shimmering. Optional (`dopplerAberration`).
 - **Tier 2b - scaled-body aberration (SHIPPED).** `BodyAberration` re-aims every planet/moon/star to
   its **forward-aberrated** bearing `cos θ_obs = (cos θ + β)/(1 + β cos θ)` (direction only, distance
   preserved) - but **only inside the render**: moved at the scaled camera's onPreCull, restored after
   the near camera renders. Physics, the map, and every Update-time consumer always see true positions;
   flare systems and Scatterer's per-camera reads (source-verified) fall inside the window and follow
   automatically. PQS-active bodies are skipped (their local-space twin renders at the true bearing).
-  Optional (`dopplerBodyWarp`). Known limit: Kopernicus multi-star secondary flares stay at true
-  bearings (drawn by KopernicusStar, outside our reach without reflection).
+  Optional (`dopplerBodyWarp`). Kopernicus multi-star secondary flares follow too: a soft-typed
+  adapter re-aims each star's directional KopernicusSunFlare inside the same render window
+  (grounded @ Release-247; see `docs/compatibility.md`).
 
 ### 2.6 Implementation guards / edge cases (must-handle)
 
@@ -284,8 +292,10 @@ Guard it:
   to `−F_engine` (full thrust cancellation), never an infinite force. So the relativity hook **cannot
   amplify a kraken.** Good.
 - Still **NaN-guard the γ computation** (used by resource scaling + dashboard): `if (!IsFinite(β) || β
-  ≥ β_sane) → identity` - skip correction and scaling for that vessel/frame. `β_sane` sits just above
-  any legitimate drive (e.g. 0.995c); anything past it is treated as a glitch. **Do not try to "fix"
+  ≥ β_sane) → identity` - skip correction and scaling for that vessel/frame. `β_sane` sits above
+  any legitimate drive (0.999c since 1.1.0 - torch drives legitimately cruise near 0.994c, and the
+  layer disabling above the ceiling hands full thrust back, so it must stay out of legit reach);
+  anything past it is treated as a glitch. **Do not try to "fix"
   the glitch** - the kraken is a collision/joint bug, not this layer's job; hand it back to
   KSP/Principia. Log a one-liner ("implausible β, relativity disabled").
 
@@ -406,7 +416,7 @@ to retune, and modpacks can override it. Defaults reproduce the physically exact
 | Key | Default | Meaning |
 |-----|---------|---------|
 | `betaMin` | `0.01` | Activation gate (§2.6 i). Below this β everything is identity. |
-| `betaSane` | `0.995` | Kraken fail-safe ceiling (§2.6 iii). Above this β ⇒ treat as glitch, disable. |
+| `betaSane` | `0.999` | Kraken fail-safe ceiling (§2.6 iii). Above this β ⇒ treat as glitch, disable. |
 | `thrustExponent` | `3` | γ-exponent on the thrust penalty. `3` = physically exact 1/γ³; a modpack can lower it for earlier onset (§4). |
 | `resourceExclusions` | `<engine propellants>, ElectricCharge, <radiation dose>` | Resources **not** scaled by 1/γ (§2.2). Everything else onboard is scaled. |
 | `doseBeamingExponent` | `0` | Optional forward-beaming boost to radiation dose at high β (§4). `0` = off (dose stays coordinate-time ×1.00, the shipped default). A positive value scales dose by ~`(γ(1+β))^exponent` to model blueshifted/beamed forward flux. |

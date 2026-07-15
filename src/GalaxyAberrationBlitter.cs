@@ -43,7 +43,7 @@ namespace Relativity
 
             material.SetFloat(_Beta, (float)st.Beta);
             material.SetFloat(_Aberrate, 1f);
-            material.SetFloat(_FlipY, RelativityConfig.DopplerAberrFlipY ? 1f : 0f);
+            material.SetFloat(_FlipY, 0f);   // axis settled in-game (DX11 convention insurance retired)
             material.SetVector(_VelDirWorld, ((Vector3)velWorld).normalized);
             // THIS camera's matrices — the galaxy camera shares world orientation with the flight
             // camera (it sits at the galaxy-space origin, rotation-synced). nonJittered: if a TUFX

@@ -69,9 +69,8 @@ Two things worth knowing up front about the visuals:
 
 - Don't run TUFX/PPv2 temporal AA with the visual active. TAA reprojects from frame history, the
   relativistic warp has no motion vectors for it, and the ship silhouette shimmers. Use SMAA or FXAA
-  in your profile; the visual carries its own silhouette edge-AA pass anyway. Scatterer's built-in
-  TAA has the same problem, but that one is suspended and restored automatically
-  (`dopplerSuppressScattererTAA` opts out).
+  in your profile. Scatterer's built-in TAA is fine: since 1.1.0 the sky is graded before the ship
+  draws, so Scatterer TAA smooths the graded sky instead of fighting it.
 - If the sky bands at high β, your skybox texture is DXT-compressed. Install a PNG skybox via your
   texture-replacement mod, or raise the MM-only `dopplerDither`.
 

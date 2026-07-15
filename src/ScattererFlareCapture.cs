@@ -34,8 +34,42 @@ namespace Relativity
         static Type flareType;              // Scatterer.SunFlare
         static FieldInfo flareGOField;      // GameObject sunflareGameObject (non-public)
         static readonly List<Renderer> renderers = new List<Renderer>();
+        static readonly List<Mesh> meshes = new List<Mesh>();   // parallel: MeshFilter.sharedMesh (DrawMesh path)
         static int rescanAt;
         static CommandBuffer cmd;
+
+        // Suppress-and-redraw (owner decision 2026-07-15, 3-agent investigation): while the SG
+        // flare pass is live, the flare mesh is disabled so it NEVER enters the frame — the
+        // capture feeds pass 6's pure re-add and the lossy un-blend has nothing to do. Safe:
+        // Scatterer sets renderer.enabled exactly once at creation and never re-asserts it
+        // (grounded, SunFlare.cs:100); occlusion/fades survive because the flare shader gates in
+        // the VERTEX stage on uniforms updateProperties still writes each OnPreRender.
+        public static bool SuppressedNow;   // state actually applied to the CURRENT frame (read by the blitter → _FlareSuppressed)
+        static bool suppressActive;
+
+        public static void Suppress(bool want)
+        {
+            if (!Present) { SuppressedNow = false; suppressActive = false; return; }
+            if (want && Time.frameCount >= rescanAt) Rescan();
+            // All-or-nothing: a renderer without a MeshFilter can't be captured via DrawMesh
+            // (CommandBuffer.DrawRenderer on a DISABLED renderer hits a documented Unity
+            // transform-sync assert), so if any flare lacks a mesh we suppress NONE and the
+            // shader stays on the un-blend branch — mixed per-star states would break the
+            // binary uniform.
+            bool can = want && renderers.Count > 0;
+            if (can)
+                for (int i = 0; i < renderers.Count; i++)
+                    if (renderers[i] != null && meshes[i] == null) { can = false; break; }
+            for (int i = 0; i < renderers.Count; i++)
+            {
+                Renderer r = renderers[i];
+                if (r == null) { rescanAt = 0; continue; }
+                if (can) { if (r.enabled) r.enabled = false; }
+                else if (suppressActive && !r.enabled) r.enabled = true;   // undo only our own state
+            }
+            SuppressedNow = can;
+            suppressActive = can;
+        }
 
         // Scatterer material floats toggled per camera by its SunflareCameraHook.
         static readonly int _RenderOnCam = Shader.PropertyToID("renderOnCurrentCamera");
@@ -71,11 +105,15 @@ namespace Relativity
         {
             rescanAt = Time.frameCount + 600;
             renderers.Clear();
+            meshes.Clear();
             foreach (UnityEngine.Object o in UnityEngine.Object.FindObjectsOfType(flareType))
             {
                 GameObject go = flareGOField.GetValue(o) as GameObject;
                 Renderer r = go != null ? go.GetComponent<Renderer>() : null;
-                if (r != null) renderers.Add(r);
+                if (r == null) continue;
+                renderers.Add(r);
+                MeshFilter mf = go.GetComponent<MeshFilter>();
+                meshes.Add(mf != null ? mf.sharedMesh : null);
             }
         }
 
@@ -87,7 +125,12 @@ namespace Relativity
             if (!Ready) return false;
             try
             {
-                if (Time.frameCount >= rescanAt) Rescan();
+                // While suppression is live, Suppress() is the sole rescan owner: a mid-frame
+                // rescan here could adopt a renderer recreated AFTER this frame's Suppress ran —
+                // it already drew into the frame, so capturing it under _FlareSuppressed=1 would
+                // composite that star's flare twice for a frame (review find). Deferring the
+                // rescan one frame lets Suppress disable it before it is ever captured.
+                if (!suppressActive && Time.frameCount >= rescanAt) Rescan();
                 if (renderers.Count == 0) return false;
                 cmd.Clear();
                 cmd.SetRenderTarget(rt);
@@ -103,14 +146,21 @@ namespace Relativity
                 {
                     Renderer r = renderers[i];
                     if (r == null) { rescanAt = 0; continue; }   // scene switch killed it — rescan next frame
-                    if (!r.enabled) continue;
+                    // Stock-disabled renderers are skipped as before; OUR suppression is the
+                    // exception (the whole point is capturing the flare we removed).
+                    if (!r.enabled && !suppressActive) continue;
                     Material m = r.sharedMaterial;
                     // The per-camera flag must exist or the draw is a silent no-op — treat a
                     // missing property as "this flare can't be captured" rather than success.
                     if (m == null || !m.HasProperty(_RenderOnCam)) continue;
                     armed.Add(m);
                     armedOld.Add(new Vector4(m.GetFloat(_RenderOnCam), m.GetFloat(_UseDbuffer), 0f, 0f));
-                    cmd.DrawRenderer(r, m, 0, -1);   // -1 = every pass (flare + ghosts)
+                    if (suppressActive && meshes[i] != null)
+                        // Disabled renderer: DrawRenderer hits a documented Unity assert /
+                        // transform-sync bug — DrawMesh with an explicit matrix is state-free.
+                        cmd.DrawMesh(meshes[i], r.transform.localToWorldMatrix, m, 0, -1);
+                    else
+                        cmd.DrawRenderer(r, m, 0, -1);   // -1 = every pass (flare + ghosts)
                     any = true;
                 }
                 if (!any) return false;

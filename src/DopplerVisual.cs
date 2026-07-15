@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Relativity
 {
@@ -39,7 +40,8 @@ namespace Relativity
         // fixed backdrop, so one capture holds for the session). CubeReady gates the shader's aberration
         // branch so it never samples an unbound cube.
         public static bool CubeReady;
-        static Cubemap galaxyCube;
+        static RenderTexture galaxyCube;   // cube RT WITH mips — see TryCaptureCube
+        static int cubeFaceCap = int.MaxValue;   // learned from a driver-refused Create (E_OUTOFMEMORY)
         int frames;                 // small settle delay before the galaxy is ready to capture
         int captureRetryAt;         // backoff gate after a FAILED capture — never storm every frame
         bool rearOn;                // rear-camera hysteresis state (on ≥0.5, off <0.47 — no threshold thrash)
@@ -92,6 +94,21 @@ namespace Relativity
         // ignores per-light culling masks — harmless for the same reason).
         Light headlight;
 
+        // Sky-grade prototype (2nd review item B, gate passed in-game 2026-07-14): a CommandBuffer
+        // grades the sky IN the frame before the ship draws — BeforeForwardOpaque on the forward
+        // path, BeforeGBuffer on deferred (where opaques are already in the buffer at the forward
+        // event; both verified by SkyGradeProbe). While live, the blitter passes through and the
+        // vessel-mask camera stays dormant: ship, plumes and flare keep their stock look by draw
+        // order, so the depth mask / mask camera / flare machinery / SMAA chain never run.
+        CommandBuffer skyCB;
+        Camera skyCBCam;
+        CameraEvent skyCBEvent;
+        bool skyCBHDR;
+        Material skyCBMat;
+        bool skyPassWarned;
+        public static bool SkyGradeLive;   // read by DopplerBlitter (passthrough) + DriveVesselMask
+        static readonly int SkyTmpId = Shader.PropertyToID("_RelativitySkyGradeTmp");
+
         // Doppler'd sunlight (owner request, test round 4): the flight sun light kept aiming from
         // the sun's TRUE bearing while every visual (body warp, corona, flare) moved to the
         // aberrated one — hull shading and shadows contradicted the screen. Re-aim the light
@@ -142,6 +159,9 @@ namespace Relativity
             // AFTER SunlightPreCull (multicast order = subscription order): the mask renders under
             // the already-patched sun, matching the frame it will be subtracted from.
             Camera.onPreCull += VesselMaskPreCull;
+            // Sky-grade uniforms bound at PreCull: the CommandBuffer executes mid-render, BEFORE
+            // OnRenderImage would have bound them — stale matrices would lag the grade a frame.
+            Camera.onPreCull += SkyGradePreCull;
             Attach();
         }
 
@@ -166,16 +186,25 @@ namespace Relativity
 
             ForceStackHDR(st);               // ScaledCamera.Instance can also appear late — retry here
             TryCaptureCube();
+            // Live LOD trade dial (owner request): negative bias samples the cube one+ mip sharper —
+            // star noise returns (masking the skybox's own 8-bit banding) at the cost of that much
+            // forward shimmer. 0 = pure derivative LOD; pair with the "dither" slider to calibrate.
+            if (galaxyCube != null)
+                galaxyCube.mipMapBias = (float)RelativityConfig.DopplerCubeMipBias;
 
+            DriveSkyGrade(st, velWorld);     // BEFORE DriveVesselMask — it gates on SkyGradeLive
+            // Suppress-and-redraw (owner decision 2026-07-15): while the SG flare pass will run,
+            // Scatterer's flare mesh is disabled BEFORE the near camera renders — it never enters
+            // the frame, so pass 6's re-add is exact and the lossy un-blend never executes.
+            // Gated on last frame's capture success: a capture surprise self-heals to the stock
+            // flare within one frame instead of leaving a flareless sky.
+            ScattererFlareCapture.Suppress(SkyGradeLive
+                && RelativityConfig.DopplerFlareSeparate
+                && ScattererFlareCapture.Ready && mat != null && mat.passCount >= 7
+                && DopplerBlitter.LastFlareCaptureOk);
             DriveRearCam(st, velWorld);
             DriveVesselMask(st);
             DriveHeadlight(st, velWorld);
-            // Scatterer's own TAA (projection jitter) fights the active pass the same way TUFX TAA
-            // does — suspend it exactly while the pass runs, restore after (ScattererTAAAdapter).
-            // On its OWN line so no feature method's early-returns can accidentally gate it
-            // (review find). Not gated on map view: avoids history-reset churn on map toggles.
-            ScattererTAAAdapter.Drive(RelativityConfig.DopplerSuppressScattererTAA && mat != null
-                && st.Active && RelativityConfig.DopplerIntensity > 0.0);
         }
 
         // Aim/colour/size the forward headlight (see the field comment). All curve inputs come from
@@ -220,6 +249,68 @@ namespace Relativity
             headlight.color = new Color((float)r, (float)g, (float)b);
             headlight.intensity = (float)inten;
             headlight.enabled = inten > 1e-4;
+        }
+
+        // Attach/detach the pre-ship sky-grade CommandBuffer (see the skyCB field comment). The
+        // event follows the camera's ACTUAL rendering path — SkyGradeProbe verified in-game that
+        // BeforeForwardOpaque still holds a ship-less buffer on forward, and that BeforeGBuffer is
+        // the pre-ship point on deferred. The CB is rebuilt whenever the camera, event, HDR state
+        // or material changes; a bundle without pass 5 logs once and stays on the normal path.
+        void DriveSkyGrade(RelativityCore.State st, Vector3d velWorld)
+        {
+            Camera main = frameMainCam;
+            bool passOk = mat != null && mat.passCount >= 6;
+            if (RelativityConfig.DopplerSkyGrade && mat != null && !passOk && !skyPassWarned)
+            {
+                skyPassWarned = true;
+                Debug.LogWarning("[Relativity] dopplerSkyGrade needs a bundle with the sky-grade pass"
+                    + " — old bundle installed, staying on the normal path.");
+            }
+            bool wanted = RelativityConfig.DopplerSkyGrade && passOk && main != null
+                && st.Active && RelativityConfig.DopplerIntensity > 0.0
+                && !MapView.MapIsEnabled && velWorld.sqrMagnitude > 1e-6;
+            if (!wanted)
+            {
+                DetachSkyGrade();
+                SkyGradeLive = false;
+                return;
+            }
+
+            CameraEvent want = main.actualRenderingPath == RenderingPath.DeferredShading
+                ? CameraEvent.BeforeGBuffer : CameraEvent.BeforeForwardOpaque;
+            bool hdr = main.allowHDR;
+            if (skyCB == null || skyCBCam != main || skyCBEvent != want || skyCBHDR != hdr
+                || skyCBMat != mat)
+            {
+                DetachSkyGrade();
+                var tmp = new RenderTargetIdentifier(SkyTmpId);
+                skyCB = new CommandBuffer { name = "Relativity sky grade" };
+                skyCB.GetTemporaryRT(SkyTmpId, -1, -1, 0, FilterMode.Bilinear,
+                    hdr ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default);
+                skyCB.Blit(BuiltinRenderTextureType.CameraTarget, tmp);
+                skyCB.Blit(tmp, BuiltinRenderTextureType.CameraTarget, mat, 5);
+                skyCB.ReleaseTemporaryRT(SkyTmpId);
+                main.AddCommandBuffer(want, skyCB);
+                skyCBCam = main; skyCBEvent = want; skyCBHDR = hdr; skyCBMat = mat;
+                Debug.Log("[Relativity] sky grade attached: cam=" + main.name + " event=" + want
+                    + " path=" + main.actualRenderingPath + (hdr ? " HDR" : " LDR"));
+            }
+            SkyGradeLive = true;
+        }
+
+        void DetachSkyGrade()
+        {
+            if (skyCBCam != null && skyCB != null) skyCBCam.RemoveCommandBuffer(skyCBEvent, skyCB);
+            if (skyCB != null) { skyCB.Release(); skyCB = null; }
+            skyCBCam = null; skyCBMat = null;
+        }
+
+        void SkyGradePreCull(Camera cam)
+        {
+            if (!SkyGradeLive || cam == null || cam != skyCBCam || mat == null) return;
+            if (frameVelWorld.sqrMagnitude < 1e-6) return;
+            DopplerBlitter.BindSkyGradeUniforms(mat, cam, frameState,
+                ((Vector3)frameVelWorld).normalized);
         }
 
         // Re-aim + Doppler every star's flight sunlight (see the sunLights field comment). VERIFY
@@ -311,16 +402,18 @@ namespace Relativity
         void DriveVesselMask(RelativityCore.State st)
         {
             Camera main = Camera.main;
+            // SkyGradeLive: plumes draw AFTER the pre-ship grade with their stock look — the mask
+            // camera has nothing to separate, so it stays dormant (the prototype's main perf win).
             bool wanted = RelativityConfig.DopplerVesselMask && mat != null && main != null
                 && st.Active && RelativityConfig.DopplerIntensity > 0.0 && !MapView.MapIsEnabled
-                && PlumeLikely(FlightGlobals.ActiveVessel);
+                && !SkyGradeLive && PlumeLikely(FlightGlobals.ActiveVessel);
             VesselMaskLive = wanted;
             if (!wanted)
             {
                 // Free the full-res RT (~20MB at 1440p) once the LAYER or the FEATURE is off — a
                 // dashboard/cfg toggle-off must not park it for the rest of a cruise (review find).
                 // Map toggles keep it (st stays active there) so allocations can't thrash.
-                if ((!st.Active || !RelativityConfig.DopplerVesselMask) && maskRT != null)
+                if ((!st.Active || !RelativityConfig.DopplerVesselMask || SkyGradeLive) && maskRT != null)
                 {
                     if (maskCam != null) maskCam.targetTexture = null;
                     VesselMaskRT = null;
@@ -439,7 +532,12 @@ namespace Relativity
         {
             if (aberrMat == null || !RelativityConfig.DopplerAberration) return;
             if (ScaledCamera.Instance == null || ScaledCamera.Instance.galaxyCamera == null) return;
-            if (++frames < 5) return;
+            // Scene-readiness gate + a longer settle: a cold-launch capture 0.3 s into the flight
+            // scene (owner-hit 2026-07-15) can race the scene fade-in and "succeed" over a black
+            // backdrop — CubeReady then pins the black cube and the whole aberrated sky renders
+            // dark. The content probe below is the backstop; this gate avoids most attempts.
+            if (!FlightGlobals.ready) return;
+            if (++frames < 30) return;
 
             // Face size from the settings screen (Difficulty Options → Relativity): Auto measures the
             // installed skybox (TextureReplacer's swapped textures included, since it swaps them on
@@ -449,6 +547,12 @@ namespace Relativity
             var gp = HighLogic.CurrentGame != null ? HighLogic.CurrentGame.Parameters : null;
             var gs = gp != null ? gp.CustomParams<RelativityGameSettings>() : null;
             var detail = gs != null ? gs.skyDetail : RelativityGameSettings.SkyDetail.Auto;
+            // A graphics device-loss event (fullscreen toggle, resolution change, driver TDR) can
+            // drop the cube RT's GPU surface while the C# handle stays non-null: IsCreated() goes
+            // false but CubeReady would ride the steady-state return below onto a dead (black)
+            // cube forever. Re-arm the capture instead (review find) — same-frame re-render, no
+            // black frame.
+            if (CubeReady && galaxyCube != null && !galaxyCube.IsCreated()) CubeReady = false;
             if (CubeReady && galaxyCube != null && detail == lastDetail) return;   // steady state
             if (frames < captureRetryAt) return;                                    // failed-capture backoff
 
@@ -456,29 +560,121 @@ namespace Relativity
             // GPU ceiling: asking beyond maxCubemapSize silently clamps the created texture, which
             // would never equal `desired` and re-capture EVERY frame (red-team F1: VRAM storm/OOM).
             desired = Mathf.Min(desired, SystemInfo.maxCubemapSize);
+            // Float + mips cost 6·s²·4·(4/3) = 32·s² bytes (8192 → 2.1 GB): cap the request at 1/6
+            // of reported VRAM up front, and honour any size the driver already refused. The
+            // owner-hit failure mode: an 8192 ARGBHalf cube (64·s² = 4.3 GB) failed create with
+            // E_OUTOFMEMORY logged ONLY to Player.log, RenderToCubemap still returned true, and the
+            // shader sampled a black cube behind a "captured" success log. Create() below is the
+            // ground-truth check for that class.
+            // budgetBytes > 0 guard: graphicsMemorySize is documented-approximate and reports
+            // 0/tiny on some iGPU/UMA drivers — an unguarded 0 budget floored EVERY install to
+            // 512/face (review find). With no usable report, skip the heuristic and let Create()
+            // (the driver's own answer) be the only ceiling. Log any downgrade: a silent clamp
+            // read as "captured at N/face" success while quietly ignoring the user's pick.
+            long budgetBytes = (long)SystemInfo.graphicsMemorySize * (1024L * 1024L) / 6;
+            int preClamp = desired;
+            while (desired > 512 && ((budgetBytes > 0 && 32L * desired * desired > budgetBytes) || desired > cubeFaceCap))
+                desired /= 2;
+            if (desired != preClamp)
+                Debug.LogWarning("[Relativity] galaxy cube clamped " + preClamp + " → " + desired
+                    + "/face (VRAM " + SystemInfo.graphicsMemorySize + " MB reported"
+                    + (cubeFaceCap != int.MaxValue ? ", driver cap " + cubeFaceCap : "") + ").");
             if (CubeReady && galaxyCube != null && galaxyCube.width == desired) { lastDetail = detail; return; }
 
             // CubeReady false FIRST: the galaxy blitter passthroughs while RenderToCubemap re-renders
             // the camera, so the capture always sees the unwarped sky (also true on re-capture).
             CubeReady = false;
-            if (galaxyCube != null) Destroy(galaxyCube);
-            galaxyCube = new Cubemap(desired, TextureFormat.ARGB32, false);
-            galaxyCube.filterMode = FilterMode.Bilinear;
+            if (galaxyCube != null) { galaxyCube.Release(); Destroy(galaxyCube); }
+            // Cube RT WITH mips, not a mipless Cubemap: forward aberration compresses a wide source
+            // cone into few screen pixels (minification), and without mips texCUBE is pinned to mip 0
+            // — star-texture shimmer no edge AA can touch. Trilinear + mips let the hardware
+            // derivative LOD average the compressed starfield per pixel (physically right: at that
+            // compression many stars share one pixel). Rear magnification derivatives are small, so
+            // the aft/rear-cam path stays at mip 0 — sharpness there is unaffected.
+            // Float, not ARGB32: mip averaging of dim stars makes smooth low-amplitude gradients,
+            // and an 8-bit store re-quantizes every mip level — the forward beam gain (up to ~×32)
+            // then amplifies those 1/255 steps into visible banding (owner-observed). R11G11B10
+            // float, not ARGBHalf: same 32 bpp as ARGB32 (so 8192/face still fits VRAM — half
+            // precision doubled the cube to 4.3 GB and the driver refused it) with FLOAT relative
+            // precision in the dim range where the banding lived (~1/64 steps vs 8-bit's giant
+            // relative steps near black). If faint banding survives in the blue channel (10-bit =
+            // 5-bit mantissa), the fallback is ARGBHalf at half the face size.
+            galaxyCube = new RenderTexture(desired, desired, 0, RenderTextureFormat.RGB111110Float);
+            galaxyCube.dimension = TextureDimension.Cube;
+            galaxyCube.useMipMap = true;
+            galaxyCube.autoGenerateMips = false;   // one-time capture → one explicit GenerateMips below
+            galaxyCube.filterMode = FilterMode.Trilinear;
+            if (!galaxyCube.Create())
+            {
+                Destroy(galaxyCube);
+                galaxyCube = null;
+                cubeFaceCap = desired / 2;   // the next attempt asks the driver for half
+                captureRetryAt = frames + 120;
+                Debug.LogWarning("[Relativity] galaxy cube RT create REFUSED at " + desired
+                    + "/face (VRAM?) — will retry at " + cubeFaceCap + ".");
+                return;
+            }
             // A failed capture must NOT count as ready — sampling an unrendered cube blacks out the
             // whole sky (red-team F2). Back off ~2s and retry instead.
-            if (!ScaledCamera.Instance.galaxyCamera.RenderToCubemap(galaxyCube))
+            if (!ScaledCamera.Instance.galaxyCamera.RenderToCubemap(galaxyCube, 63))
             {
+                galaxyCube.Release();
                 Destroy(galaxyCube);
                 galaxyCube = null;
                 captureRetryAt = frames + 120;
                 Debug.LogWarning("[Relativity] galaxy cubemap capture FAILED at " + desired + "/face — will retry.");
                 return;
             }
+            galaxyCube.GenerateMips();
+            // Content probe, DIAGNOSTIC ONLY: an API-successful capture can still contain black
+            // (the cold-launch fade-in race) — but the ReadPixels readback proved unreliable on
+            // the owner's DX11/R11G11B10 combo (real captures read as all-zero), and a vetoing
+            // probe turned that into a capture-retry loop that kept aberration off entirely.
+            // The FlightGlobals.ready + settle gate above is the actual race fix; this line just
+            // leaves a breadcrumb if a black capture ever slips through it.
+            if (CubeLooksBlack())
+                Debug.LogWarning("[Relativity] cube content probe reads black — accepting anyway "
+                    + "(the probe is unreliable on some GPU/format combos). If the sky IS black "
+                    + "at speed, change the sky-detail setting once to force a re-capture.");
             aberrMat.SetTexture("_GalaxyCube", galaxyCube);
             lastDetail = detail;
             CubeReady = true;
             CubeFace = desired;
             Debug.Log("[Relativity] galaxy cubemap captured at " + desired + "/face — Doppler aberration enabled.");
+        }
+
+        // Read the 1×1 top mip (= face average) of three faces of the freshly captured cube.
+        // Returns true when all three read as zero. ADVISORY ONLY — on some GPU/format combos
+        // (owner's DX11 + R11G11B10: real captures read all-zero) the readback itself lies, so
+        // callers must never veto a capture on this.
+        bool CubeLooksBlack()
+        {
+            int topMip = galaxyCube.mipmapCount - 1;
+            var probe = new Texture2D(1, 1, TextureFormat.RGBAFloat, false);
+            var prev = RenderTexture.active;
+            float maxC = 0f;
+            try
+            {
+                foreach (var face in new[] { CubemapFace.PositiveX, CubemapFace.PositiveY, CubemapFace.NegativeZ })
+                {
+                    Graphics.SetRenderTarget(galaxyCube, topMip, face);
+                    probe.ReadPixels(new Rect(0, 0, 1, 1), 0, 0, false);
+                    Color c = probe.GetPixel(0, 0);
+                    maxC = Mathf.Max(maxC, Mathf.Max(c.r, Mathf.Max(c.g, c.b)));
+                }
+            }
+            catch (Exception e)
+            {
+                // A readback surprise must not veto the capture — probing is best-effort.
+                Debug.LogWarning("[Relativity] cube content probe failed (" + e.GetType().Name + ") — accepting capture.");
+                maxC = 1f;
+            }
+            finally
+            {
+                RenderTexture.active = prev;
+                Destroy(probe);
+            }
+            return maxC < 1e-4f;
         }
 
         // Create/aim the rear live camera and publish its uniforms to the aberration material.
@@ -517,16 +713,25 @@ namespace Relativity
             // pixels-per-degree × the aberration magnification, integrated over the cone. The rear-
             // pole magnification γ(1+β) and the cone width 2·acosβ scale inversely, so their
             // product is bounded; ×2 over the raw screen density splits the difference between the
-            // cone edge (≈1×) and the pole. Power-of-two buckets so a slowly-moving β or a player
-            // zoom can't thrash re-allocations.
+            // cone edge (≈1×) and the pole. 512-step buckets keep re-allocations rare: `ideal`
+            // moves ~1 per Δβ≈7e-5 (double-precision orbital velocity has no such per-frame
+            // noise), so a burn crosses each boundary once, monotonically — no oscillation.
             float mainFovDeg = frameMainCam != null ? Mathf.Max(frameMainCam.fieldOfView, 1f) : 60f;
-            int ideal = Mathf.CeilToInt(fovDeg * (Screen.height / mainFovDeg) * 2f);
-            // 512-step buckets capped at 2048 (R13: owner-measured FPS drop). The pow2 buckets
-            // overshot — ideal 2482 at 1440p/β0.9 became a 4096² render, BIGGER than the old
-            // cube-coupled size — and 2048 is the size every owner round through 12 verified
-            // sharp. High β legitimately shrinks the bucket (the cone narrows faster than the
-            // pole magnifies); raise the cap first if the rear field ever reads soft.
-            int rtSize = Mathf.Clamp((ideal + 511) / 512 * 512, 512, 2048);
+            // Screen density: take the HIGHER of vertical and horizontal px/deg — the old
+            // vertical-only figure shorted ultrawide displays (3440-wide runs ~32 px/deg
+            // horizontally vs 24 vertically at 60° vFOV).
+            float aspect = frameMainCam != null ? Mathf.Max(frameMainCam.aspect, 0.1f) : 16f / 9f;
+            float hFovDeg = 2f * Mathf.Atan(Mathf.Tan(mainFovDeg * 0.5f * Mathf.Deg2Rad) * aspect) * Mathf.Rad2Deg;
+            float pxDeg = Mathf.Max(Screen.height / mainFovDeg, Screen.width / Mathf.Max(hFovDeg, 1f));
+            // Density factor (dopplerRearDensity, default 4): the rear-POLE magnification is
+            // γ(1+β), and cone width × pole magnification ≈ a β-independent constant (~220°) —
+            // so the ×2 "split the difference" factor left the exact aft direction undersampled
+            // at EVERY cruise β, unfixable from the cube side (owner report 2026-07-15: aft soft
+            // at max sky detail). 4 lands the pole near screen density under the 4096 cap; the
+            // R13 2048 cap was precautionary and R13-3's rollback A/B measured rear-RT size as
+            // non-dominant — verify cost with the profiler CSVs, tune the dev slider if needed.
+            int ideal = Mathf.CeilToInt(fovDeg * pxDeg * (float)RelativityConfig.DopplerRearDensity);
+            int rtSize = Mathf.Clamp((ideal + 511) / 512 * 512, 512, 4096);
             if (rearRT != null && rearRT.width != rtSize) { rearRT.Release(); Destroy(rearRT); rearRT = null; }
             if (rearRT == null)
             {
@@ -556,7 +761,7 @@ namespace Relativity
             aberrMat.SetMatrix(_RearVP,
                 GL.GetGPUProjectionMatrix(rearCam.projectionMatrix, true) * rearCam.worldToCameraMatrix);
             aberrMat.SetFloat(_RearOn, 1f);
-            aberrMat.SetFloat(_RearFlip, RelativityConfig.DopplerRearFlipY ? 1f : 0f);
+            aberrMat.SetFloat(_RearFlip, 1f);   // axis settled in-game 2026-07-12 (srcLum view)
             RearSize = rtSize;
             RearFovDeg = fovDeg;
         }
@@ -633,6 +838,10 @@ namespace Relativity
             GameEvents.OnCameraChange.Remove(OnCameraChange);
             Camera.onPreCull -= SunlightPreCull;
             Camera.onPreCull -= VesselMaskPreCull;
+            Camera.onPreCull -= SkyGradePreCull;
+            DetachSkyGrade();
+            SkyGradeLive = false;
+            ScattererFlareCapture.Suppress(false);   // hand Scatterer its flare back
             RestoreSunlight();
             if (blitter != null) Destroy(blitter);
             if (aberrBlitter != null) Destroy(aberrBlitter);
@@ -645,9 +854,6 @@ namespace Relativity
             if (maskCam != null) Destroy(maskCam.gameObject);
             if (maskRT != null) { maskRT.Release(); Destroy(maskRT); }
             if (headlight != null) Destroy(headlight.gameObject);
-            // Hand Scatterer its TAA back — leaving it suppressed past our lifetime would look like
-            // a Scatterer bug to the player.
-            ScattererTAAAdapter.Restore();
             // Restore only what we actually forced — otherwise we'd clobber a foreign (TUFX) HDR
             // choice with a value we merely observed at grab time (lifecycle review #6).
             if (forcedLast)
@@ -660,7 +866,6 @@ namespace Relativity
         void OnCameraChange(CameraManager.CameraMode mode)
         {
             Attach();
-            ScattererTAAAdapter.NoteCameraChange();   // Scatterer re-adds TAA on camera switches
         }
 
         // Put the blitter on the near flight camera (Camera.main) — it holds the composited frame and
