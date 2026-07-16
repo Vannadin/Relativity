@@ -1,5 +1,7 @@
 # Relativity
 
+## NOTICE: This mod is developed using Claude Code (Fable and Opus models)
+
 A special-relativity mod for KSP 1.12.x. When some other mod's drive pushes your ship toward the
 speed of light, this one makes that speed cost what it should: thrust stops buying acceleration,
 your crew ages slower than the mission clock, and since v1.0 the view out the window changes to
