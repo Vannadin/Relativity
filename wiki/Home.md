@@ -6,7 +6,7 @@ which is enough to make the light barrier something you plan around rather than 
 tooltip. It never touches the physics integrator, so it behaves the same on stock and alongside
 Principia.
 
-> v1.1.0. Core relativistic flight and the [[Visuals|visual layer]] are verified in-game. Some
+> v1.1.0. Core relativistic flight and the [[visual layer|Visuals]] are verified in-game. Some
 > integrations (two-clock counter, trip planner, Kerbalism dilation, RP-1) are built and
 > compile-clean but not yet play-tested; reports welcome. Back up your save before a long
 > relativistic mission.
