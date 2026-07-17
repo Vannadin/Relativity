@@ -6,7 +6,7 @@ which is enough to make the light barrier something you plan around rather than 
 tooltip. It never touches the physics integrator, so it behaves the same on stock and alongside
 Principia.
 
-> v1.0.0. Core relativistic flight and the [[Visuals|visual layer]] are verified in-game. Some
+> v1.1.0. Core relativistic flight and the [[Visuals|visual layer]] are verified in-game. Some
 > integrations (two-clock counter, trip planner, Kerbalism dilation, RP-1) are built and
 > compile-clean but not yet play-tested; reports welcome. Back up your save before a long
 > relativistic mission.
@@ -33,7 +33,8 @@ around that tension.
   reference frames, attitude.
 - [[Visuals]]: the optional relativistic view. Doppler colour, beaming, the starbow, the shifted
   sunflare.
-- [[Dashboard]]: reading the in-flight HUD (Simple/Expert, the two clocks, the brake cue).
+- [[Dashboard]]: reading the in-flight HUD (β/γ and effective thrust, the two clocks, the
+  constant-g cruise governor).
 - [[Trip Planner]]: sizing a ship in the VAB/SPH before you launch.
 - [[Configuration]]: every `relativity.cfg` key.
 - [[Compatibility]]: Principia, Kerbalism, RP-1, life-support mods, warp mods, autopilots.

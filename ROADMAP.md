@@ -6,7 +6,7 @@ Direction for **Relativity**, roughly in priority order. Not a promise of dates.
 star-bunching aberration with a live rear camera, body aberration, shifted sunflare). Authored
 career content remains out of scope by intent.
 
-## Now - finish verifying what v1.0 ships
+## Now - finish verifying what's shipped
 
 The core flight layer and the visual layer are verified in-game; these are built and compile-clean
 but still need a real playthrough:
@@ -19,19 +19,20 @@ but still need a real playthrough:
   stage-7 sample (the LCtrl+LAlt+C census prints `part.force`); switch to a Harmony postfix if needed.
 - **Unloaded β source**: validate stock `obt_velocity`/`GetFrameVel` for on-rails vessels; the mechanic
   and clock depend on it during interstellar cruise.
-- **SpaceDock listing** — live at [mod/4404](https://spacedock.info/mod/4404/Relativity). CKAN indexing is submitted.
+- **SpaceDock listing** — live at [mod/4404](https://spacedock.info/mod/4404/Relativity). CKAN is indexed;
+  new releases are picked up automatically.
 
-## Visual layer - structural experiments (post-1.0)
+## Visual layer - structural work
 
-- **Sky-grade-before-the-ship redesign** (`BeforeForwardOpaque` CommandBuffer): grade the sky *before*
-  the vessel draws, dissolving the whole silhouette/edge problem class instead of masking it. Gated on
-  two cheap probes - does the near camera's colour buffer hold the sky at that event, and what happens
-  on Scatterer-Deferred installs (forward-only event). Trade-offs on record: no flare-capture fallback,
-  soft-clip moves ahead of TUFX.
+The sky-grade-before-the-ship redesign shipped in v1.1.0 as the default path (`dopplerSkyGrade`, see
+the CHANGELOG); the old post-frame path stays one release as its fallback. What remains:
+
 - **Deferred-mod GBuffer depth/normals**: detect the *Deferred* mod and use its GBuffer instead of the
-  per-frame `depthTextureMode` request (also unblocks the redesign above on those installs).
+  per-frame `depthTextureMode` request (also lets the sky grade run on those forward-only installs).
+- **Retire the post-frame fallback path** (`dopplerSkyGrade = false`) and its mask/SMAA machinery once
+  the sky grade has survived a release in the wild.
 
-## v1.1 - autopilot / planner awareness of the weakened thrust
+## v1.2 - autopilot / planner awareness of the weakened thrust
 
 Because we cut thrust with a **corrective force** (to preserve fuel), the engine's *advertised* values
 (`finalThrust`, `maxThrust`, ISP) are left unchanged - only the net applied force becomes `F/γ³`. So any
@@ -67,8 +68,8 @@ tool that estimates from reported thrust is blind to the reduction near c:
 - **Forward-beamed radiation dose** (`doseBeamingExponent`) - optional γ²(1+β)² dose enhancement on top of
   the undilated baseline, strengthening the "radiation is the binding constraint" design.
 - **Off-axis thrust refinement**: γ³ along velocity, γ across, instead of the longitudinal approximation.
-- **Decel-now cue** wired to a live planner target (turnover point), replacing the speed heuristic.
-- **Attitude model**: optional angular-acceleration (1/γ²) instead of rotation-rate (1/γ).
+- **Decel-now cue** on the dashboard, wired to a live planner target (turnover point) - with the
+  Simple/Expert split and the light-wall speed gauge from the dashboard spec.
 
 ## Out of scope (by intent)
 

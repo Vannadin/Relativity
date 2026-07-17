@@ -23,8 +23,9 @@ fine with it disabled or its shader bundle absent.
 - **Doppler'd sunlight + forward headlight**: hull shading follows the *observed* (aberrated) sun,
   dimming/reddening as the sun falls aft, while the beamed forward sky itself starts lighting the
   hull near c.
-- **Engine plumes stay stock colour**: a separate mask keeps Waterfall/stock plumes from being
-  tinted with the background (it only runs while engine/RCS thrust is actually flowing).
+- **Engine plumes stay stock colour**: since 1.1.0 the sky is graded before the ship and its plumes
+  draw, so Waterfall/stock plumes are never touched. (On the pre-1.1 fallback path a separate mask
+  protects them instead, running only while engine/RCS thrust is flowing.)
 
 ## Requirements
 
@@ -81,4 +82,4 @@ levers in order: `dopplerVesselMask = false`, then a lower sky-detail setting (V
 
 - [[Configuration]] - every key, including the visual ones.
 - [[The Physics]] - the β/γ/Doppler background the visuals draw from.
-- [[Compatibility]] - Scatterer, TUFX, EVE, Kopernicus multi-star notes.
+- [[Compatibility]] - the mod-by-mod matrix (Principia, Kerbalism, autopilots, warp mods).

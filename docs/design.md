@@ -313,7 +313,8 @@ reinforcing "start deceleration absurdly early" (§0). At γ = 7 (0.99c) a 180°
 
 **Scope.** Reduce the vessel's rotational authority so its slew rate is ~1/γ of nominal. Resource
 *consumption* of the wheels (ElectricCharge) and RCS (monopropellant) is a **separate axis** and stays
-unscaled (§4, coordinate-time). Config: `attitudeExponent` (§5, default 1; 0 = off).
+unscaled (§4, coordinate-time). Config: `attitudeExponent` (§5, default 2 = torque ×1/γ² for the
+physical rate ×1/γ; 0 = off).
 
 **Implementation (grounded - autopilot compatibility).** Prefer expressing the reduction as a **torque
 reduction surfaced through `ITorqueProvider.GetPotentialTorque`** (reaction wheels + RCS report their
@@ -398,8 +399,9 @@ No planet-pack DB / cfg deltas are implied by this layer. The full mod-by-mod co
   monopropellant) stays unscaled here (coordinate-time). Their **rotational authority** is a *separate
   axis*, scaled ×1/γ by time dilation - see §2.7, not this exclusion.
 - **Attitude control - RESOLVED: rotation rate ×1/γ (§2.7).** Reorientation is an internal proper-time
-  process, so it slows by the time-dilation factor 1/γ (not the translational 1/γ³). Scale max angular
-  velocity; leave wheel/RCS resource consumption unscaled (above). Reinforces the early-decel mechanic.
+  process, so it slows by the time-dilation factor 1/γ (not the translational 1/γ³). Surfaced as a
+  torque reduction via `ITorqueProvider.GetPotentialTorque` (§2.7), not a hidden angular-velocity
+  clamp; leave wheel/RCS resource consumption unscaled (above). Reinforces the early-decel mechanic.
 - **Arrival frame - RESOLVED: keep the departure Sol-barycentric frame.** A single fixed inertial frame
   for the whole trip. Peculiar velocities (αCen 7×10⁻⁵ c … Barnard 5×10⁻⁴ c) make "at rest at the
   destination" read β ≈ 0 either way (γ−1 ~ 10⁻⁷⁻⁸) ⇒ rebasing has zero mechanical effect, only added
@@ -417,14 +419,14 @@ to retune, and modpacks can override it. Defaults reproduce the physically exact
 |-----|---------|---------|
 | `betaMin` | `0.01` | Activation gate (§2.6 i). Below this β everything is identity. |
 | `betaSane` | `0.999` | Kraken fail-safe ceiling (§2.6 iii). Above this β ⇒ treat as glitch, disable. |
-| `thrustExponent` | `3` | γ-exponent on the thrust penalty. `3` = physically exact 1/γ³; a modpack can lower it for earlier onset (§4). |
-| `resourceExclusions` | `<engine propellants>, ElectricCharge, <radiation dose>` | Resources **not** scaled by 1/γ (§2.2). Everything else onboard is scaled. |
-| `doseBeamingExponent` | `0` | Optional forward-beaming boost to radiation dose at high β (§4). `0` = off (dose stays coordinate-time ×1.00, the shipped default). A positive value scales dose by ~`(γ(1+β))^exponent` to model blueshifted/beamed forward flux. |
-| `attitudeExponent` | `1` | γ-exponent on attitude/rotation rate (§2.7). `1` = physical time-dilation 1/γ; `0` disables the attitude slowdown (turning stays instant). |
+| `thrustExponent` | `3` | *Spec-only, not wired*: the shipped penalty is hardwired to the physically exact 1/γ³. The key exists here as the designed knob for a modpack wanting earlier onset (§4). |
+| `resourceExclusions` | `<engine propellants>, ElectricCharge, <radiation dose>` | *Spec-only, not wired as a key*: resources **not** scaled by 1/γ (§2.2). The shipped exclusion knob is `kerbalismExcludedRules` (radiation by default). |
+| `doseBeamingExponent` | `0` | *Spec-only, not wired* (roadmap): optional forward-beaming boost to radiation dose at high β (§4). `0` = off (dose stays coordinate-time ×1.00, the shipped behavior). A positive value would scale dose by ~`(γ(1+β))^exponent` to model blueshifted/beamed forward flux. |
+| `attitudeExponent` | `2` | γ-exponent on wheel/RCS **torque** (§2.7). `2` = torque ×1/γ², which lands the physical rotation-rate ×1/γ (`1` gives only ~√γ×); `0` disables the attitude slowdown (turning stays instant). |
 
 Engine propellants are detected from active engine modules rather than named, so the exclusion holds
-for any fuel type; `resourceExclusions` is for the named additions (ElectricCharge, dose, and any
-modpack-specific coordinate-time resource).
+for any fuel type; named additions (radiation dose by default, plus any modpack-specific
+coordinate-time resource) go through `kerbalismExcludedRules`.
 
 ## 6. Scope & versioning
 

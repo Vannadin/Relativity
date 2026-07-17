@@ -5,8 +5,9 @@
 Because braking is an engine burn, and near `c` **all** engine thrust is crushed by `1/γ³` - braking is
 exactly as feeble as accelerating ([[The Physics#1-thrust-falls-as-1γ3-the-light-wall]]). At 0.9c you have
 ~8% of your thrust; at 0.99c, ~0.3%. You have to **start decelerating absurdly early** - often a
-light-year or more out. Watch the **⚠ decel now** cue on the [[Dashboard]], and set a target in the
-[[Trip Planner]] so the cue knows the real distance. And remember you must *turn around* first, which is
+light-year or more out. Plan the trip in the [[Trip Planner]] before you launch - its accel/coast
+breakdown shows how early the brake burn has to start (an in-flight decel cue on the [[Dashboard]] is
+planned). And remember you must *turn around* first, which is
 also slowed ([[The Physics#4-attitude-turning-slows-as-1γ]]) - leave lead time even to point retrograde.
 
 ## The nothing happens until I'm going *really* fast
@@ -33,7 +34,7 @@ model dose.)
 Known limitation. The mod cuts thrust with a corrective *force*, leaving the engine's **advertised**
 thrust/ISP unchanged - so tools estimating from reported thrust don't see the reduction and
 under-estimate burn time. Measured-acceleration executors self-correct partially. A proper fix (exposing
-an effective-thrust value these tools can read) is on the v0.2 roadmap. See [[Compatibility#autopilots--time-warp]].
+an effective-thrust value these tools can read) is on the roadmap. See [[Compatibility#autopilots--time-warp]].
 
 ## Does this work with Principia?
 
@@ -75,13 +76,13 @@ in map view). `dopplerVisual = false` turns all of it off.
 
 Almost always TUFX/PPv2 **TAA** - temporal reprojection fights the screen-space warp (no motion
 vectors) and is documented unsupported. Switch your TUFX profile to **SMAA or FXAA**; both are
-verified fine. Scatterer's own TAA is handled automatically. See [[Visuals#anti-aliasing]].
+verified fine. Scatterer's own TAA is fine since 1.1.0 - leave it on. See [[Visuals#anti-aliasing]].
 
 ## Does the visual layer cost performance?
 
-Only while it's actually on screen: everything engages with the layer (β above the gate), the
-plume mask only runs while thrust is flowing, and the rear sky camera only above β ≈ 0.5. Normal
-in-system play renders exactly stock. If you need frames at cruise, see [[Visuals#performance]].
+Only while it's actually on screen: everything engages with the layer (β above the gate), and the
+rear sky camera only runs above β ≈ 0.5. Since 1.1.0 the sky is graded before the ship draws, so
+there is no per-frame plume mask on the default path. Normal in-system play renders exactly stock. If you need frames at cruise, see [[Visuals#performance]].
 
 ## How do I report a bug?
 

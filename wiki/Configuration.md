@@ -48,13 +48,6 @@ dither, cube mip bias…) is deliberately ModuleManager-only, with live dev slid
 | `dopplerBodyWarp` | `true` | Also aberrate the apparent direction of planets/moons/sun (render-only; distance/size preserved). |
 | `dopplerVesselMask` | `true` | Keep engine plumes at their stock colour on the fallback path (hidden plume-layer render; runs only while engine/RCS thrust is flowing). The default sky-grade path preserves plumes by draw order and ignores this. |
 
-## Optional / advanced
-
-- **`doseBeamingExponent`**: an optional forward-beaming boost to radiation dose at high β (models
-  blueshifted/beamed cosmic rays). Off by default (dose stays ×1.00). A positive value scales dose by
-  roughly `(γ(1+β))^exponent`. Enabling it *strengthens* the radiation-is-the-constraint design. Add it
-  to the node if you want it.
-
 ## ModuleManager patching
 
 Because the node loads through `GameDatabase`, ModuleManager is **not required** just to run the mod - it

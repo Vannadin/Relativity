@@ -9,8 +9,7 @@
 ## Install with CKAN (recommended)
 
 Search for **Relativity** and install it - CKAN pulls in Harmony automatically. Optional integrations
-(Kerbalism, RP-1) are picked up on their own if you already have them. (If it doesn't appear in CKAN
-yet, indexing may still be in review - use the manual install below meanwhile.)
+(Kerbalism, RP-1) are picked up on their own if you already have them.
 
 ## Manual install
 

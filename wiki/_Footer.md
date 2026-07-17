@@ -1,1 +1,1 @@
-Relativity v1.0.0 · [report a bug](https://github.com/Vannadin/Relativity/issues) · MIT
+Relativity v1.1.0 · [report a bug](https://github.com/Vannadin/Relativity/issues) · MIT

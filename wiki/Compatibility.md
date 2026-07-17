@@ -67,7 +67,7 @@ blind to the reduction near c.
 
 | Mod | Status |
 |-----|--------|
-| **MechJeb** | ⚠️ Burn-time estimates and node timing computed from reported thrust will under-estimate near c; measured-acceleration executors partially self-correct. A first-class fix is on the roadmap (v0.2). Attitude `1/γ` is surfaced as a torque reduction so MechJeb's turn predictions stay self-consistent. |
+| **MechJeb** | ⚠️ Burn-time estimates and node timing computed from reported thrust will under-estimate near c; measured-acceleration executors partially self-correct. A first-class fix is on the roadmap. Attitude `1/γ` is surfaced as a torque reduction so MechJeb's turn predictions stay self-consistent. |
 | **kOS** | ⚠️ Same thrust blind spot. Closed-loop steering on measured angular velocity is fine; only a script that hardcodes a turn *deadline* (instead of polling angle error) would misbehave. |
 | **Time Control / Better Time Warp** | ✅ The crew-clock accumulator reads live `fixedDeltaTime` + actual UT delta, so custom warp-rate tables are handled. |
 | **Kerbal Alarm Clock** | ✅ Agnostic. |

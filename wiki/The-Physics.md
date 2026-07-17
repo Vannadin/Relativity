@@ -39,7 +39,7 @@ The curve is gentle below ~0.5c and steepens hard near `c` - the "pushing the li
 
 **It is direction-blind.** Braking is also an engine burn, so slowing down near `c` is exactly as feeble
 as speeding up. That is the single most important gameplay consequence: **you must start arrival
-deceleration absurdly early.** See [[Dashboard#brake-authority-cue]].
+deceleration absurdly early.** The [[Trip Planner]] shows how early at design time.
 
 **Honesty note.** This is a gameplay abstraction, not momentum-conserving SR. The mod burns propellant at
 the normal rate while delivering only `F/γ³` of force, so fuel→Δv efficiency silently degrades near c -
@@ -73,10 +73,10 @@ while fast is kept for good - the twin-paradox outcome. Decelerating never "catc
 ## 3. The twist: radiation stays on coordinate time
 
 Radiation is an *external* flux, not an onboard process, so it is **not** dilated - dose keeps ticking at
-×1.00 while life-support burn drops to ×0.39 at 0.9c. A fast crew ages less but soaks the same dose, so
-on a relativistic run **radiation, not starvation, is the binding constraint.** (An optional
-`doseBeamingExponent` can even *raise* forward dose at high β to model blueshifted/beamed cosmic rays -
-off by default. See [[Configuration]].)
+×1.00 while life-support burn drops to ×0.44 at 0.9c. A fast crew ages less but soaks the same dose, so
+on a relativistic run **radiation, not starvation, is the binding constraint.** (A forward-beamed dose
+boost - blueshifted cosmic rays raising the forward flux - is on the roadmap; today dose is simply
+undilated.)
 
 ## 4. Attitude (turning) slows as 1/γ
 
