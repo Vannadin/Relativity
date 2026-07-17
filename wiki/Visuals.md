@@ -45,7 +45,7 @@ fine with it disabled or its shader bundle absent.
   recommended fixed choice if Auto looks soft to the sides.
 - `relativity.cfg` player keys: `dopplerVisual`, `dopplerSkyGrade`, `dopplerForceHDR`,
   `dopplerColorStrength`, `dopplerAberration`, `dopplerBodyWarp`, `dopplerVesselMask` -
-  see [[Configuration#visual-layer]]. The remaining tuning surface (beam floor/cap, white bleed,
+  see [the visual-layer keys](Configuration#visual-layer). The remaining tuning surface (beam floor/cap, white bleed,
   dither, cube mip bias…) is ModuleManager-only, with live dev sliders behind `debugMode`.
 
 ## Anti-aliasing (read this if the ship edge shimmers)

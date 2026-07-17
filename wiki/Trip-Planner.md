@@ -42,7 +42,7 @@ per-resource life-support estimate is planned, pending the life-support integrat
 | 3.0 c | 0.995 | 0.905 |
 
 - **A fast *rendezvous* costs roughly double the ΔV of a flyby**: that's the direction-blind braking
-  penalty ([[The Physics#1-thrust-falls-as-1γ3-the-light-wall]]) showing up at design time.
+  penalty ([The Physics §1](The-Physics#1-thrust-falls-as-1γ-the-light-wall)) showing up at design time.
 - A **low-thrust** ship spends longer getting up to cruise, which lengthens the trip *and* the crew's
   aging (the crew clock runs during the accel phase too).
 - A longer *mission* means more **radiation dose** even though the crew ages less - the "radiation, not

@@ -120,12 +120,12 @@ deliberate line, and it is worth knowing exactly where it falls - so here is the
 
 | Effect | How | Section |
 |--------|-----|---------|
-| Thrust collapses `1/γ³` (the light wall) | corrective force on the vessel | [§1](#1-thrust-falls-as-1γ3-the-light-wall) |
+| Thrust collapses `1/γ³` (the light wall) | corrective force on the vessel | [§1](#1-thrust-falls-as-1γ-the-light-wall) |
 | Crew/resource consumption slows `1/γ` (proper time) | rate scaling | [§2](#2-resource-burn-slows-as-1γ-proper-time) |
 | Radiation dose stays on coordinate time | *excluded* from the `1/γ` scaling | [§3](#3-the-twist-radiation-stays-on-coordinate-time) |
 | Turn rate slows `1/γ` | torque scaling | [§4](#4-attitude-turning-slows-as-1γ) |
 | Two clocks + a **permanent** twin-paradox gap | per-vessel proper-time integral `τ = ∫dt/γ`, persisted, ticks even while unloaded | [§2](#2-resource-burn-slows-as-1γ-proper-time) |
-| β measured against a fixed barycentric frame; auto-gated to interstellar cruise | speed sampling + `betaMin`/`betaSane`/warp guards | [§5](#5-reference-frame--the-solar-system-barycenter), [§6](#6-safety-guards) |
+| β measured against a fixed barycentric frame; auto-gated to interstellar cruise | speed sampling + `betaMin`/`betaSane`/warp guards | [§5](#5-reference-frame---the-solar-system-barycenter), [§6](#6-safety-guards) |
 
 Every one of these is a **scalar** applied to force, a rate, or a torque. That is the whole toolbox.
 
@@ -152,7 +152,7 @@ KSP's engine or deliberately out of scope.
    an EVA jump, a decouple, a docking-port shove near `c` all add **linearly** in-game.
 
 5. **One privileged frame - no relativity of simultaneity, no *mutual* dilation.** The mod dilates you
-   against a **single** barycentric frame fixed at departure ([§5](#5-reference-frame--the-solar-system-barycenter)),
+   against a **single** barycentric frame fixed at departure ([§5](#5-reference-frame---the-solar-system-barycenter)),
    as a scalar `1/γ`. Real SR has no privileged frame: each observer sees the *other's* clock run slow,
    and "at the same time" is frame-dependent. So two relativistic ships here do **not** see each other
    dilate - both are just scored against the barycenter. It is time-dilation *bookkeeping*, not a 4-D
@@ -165,7 +165,7 @@ KSP's engine or deliberately out of scope.
    the reduced `F/γ³` force **to the ship**, so the in-game G-meter and crew feel the `1/γ³`-reduced
    acceleration. The mod is, in effect, applying the physical *coordinate* acceleration as though it were
    the felt one. (This is exactly why a future constant-acceleration governor compensates for **mass
-   only**, not for γ - holding felt-g constant would fight the very mechanic in [§1](#1-thrust-falls-as-1γ3-the-light-wall).)
+   only**, not for γ - holding felt-g constant would fight the very mechanic in [§1](#1-thrust-falls-as-1γ-the-light-wall).)
 
 7. **No Rindler horizon / acceleration causal structure.** A ship holding constant proper acceleration has
    an **event horizon behind it** (at distance `c²/α` - about a light-year at 1 g). Drop something and,
@@ -174,7 +174,7 @@ KSP's engine or deliberately out of scope.
    separation - a dropped object just coasts and the ship pulls linearly ahead. No horizon, no lost
    contact. (See the worked example below.)
 
-8. **Momentum is not conserved.** Already flagged in [§1](#1-thrust-falls-as-1γ3-the-light-wall): propellant
+8. **Momentum is not conserved.** Already flagged in [§1](#1-thrust-falls-as-1γ-the-light-wall): propellant
    burns at the nominal rate while only `F/γ³` is delivered, so fuel→Δv efficiency silently degrades. The
    `dv/dt` and the wall-feel are right; the momentum ledger is not exact-SR.
 

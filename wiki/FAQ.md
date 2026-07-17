@@ -3,18 +3,18 @@
 ## "Why can't I stop?!"
 
 Because braking is an engine burn, and near `c` **all** engine thrust is crushed by `1/γ³` - braking is
-exactly as feeble as accelerating ([[The Physics#1-thrust-falls-as-1γ3-the-light-wall]]). At 0.9c you have
+exactly as feeble as accelerating ([The Physics §1](The-Physics#1-thrust-falls-as-1γ-the-light-wall)). At 0.9c you have
 ~8% of your thrust; at 0.99c, ~0.3%. You have to **start decelerating absurdly early** - often a
 light-year or more out. Plan the trip in the [[Trip Planner]] before you launch - its accel/coast
 breakdown shows how early the brake burn has to start (an in-flight decel cue on the [[Dashboard]] is
 planned). And remember you must *turn around* first, which is
-also slowed ([[The Physics#4-attitude-turning-slows-as-1γ]]) - leave lead time even to point retrograde.
+also slowed ([The Physics §4](The-Physics#4-attitude-turning-slows-as-1γ)) - leave lead time even to point retrograde.
 
 ## The nothing happens until I'm going *really* fast
 
 That's intended. The layer gates on `betaMin` and in-system speeds are ~10⁻⁵ c, so it stays fully idle
 until interstellar cruise. It ships **no drive** - you need a high-ΔV torch/fusion/antimatter/warp drive
-from another mod to reach a relativistic β at all. See [[Installation#verifying-it-works]].
+from another mod to reach a relativistic β at all. See [verifying it works](Installation#verifying-it-works).
 
 ## My crew barely aged but the mission took decades - bug?
 
@@ -26,7 +26,7 @@ paradox). The two clocks and their difference are shown on the [[Dashboard]].
 
 Not free - **radiation** is the catch. Dose is *not* dilated (it's external, coordinate-time), so a fast
 crew ages less but soaks the **same** dose. On a long relativistic run, radiation, not starvation, is
-what kills you. See [[The Physics#3-the-twist-radiation-stays-on-coordinate-time]]. (Requires Kerbalism to
+what kills you. See [The Physics §3](The-Physics#3-the-twist-radiation-stays-on-coordinate-time). (Requires Kerbalism to
 model dose.)
 
 ## MechJeb / kOS mis-times my burns near c
@@ -34,7 +34,7 @@ model dose.)
 Known limitation. The mod cuts thrust with a corrective *force*, leaving the engine's **advertised**
 thrust/ISP unchanged - so tools estimating from reported thrust don't see the reduction and
 under-estimate burn time. Measured-acceleration executors self-correct partially. A proper fix (exposing
-an effective-thrust value these tools can read) is on the roadmap. See [[Compatibility#autopilots--time-warp]].
+an effective-thrust value these tools can read) is on the roadmap. See [autopilots & time-warp](Compatibility#autopilots--time-warp).
 
 ## Does this work with Principia?
 
@@ -57,13 +57,13 @@ turning instant, toggle `kerbalismDilation`, etc. Every key is documented on [[C
 
 It auto-opens only when the layer is **active** (β above the gate) - i.e. during relativistic cruise, not
 in normal flight. If you pinned it, an idle layer shows `off (sub-relativistic)`. If you think it should
-be active, check `KSP.log` (and see the diagnostics in [[Installation#diagnostics]]).
+be active, check `KSP.log` (and see the [diagnostics](Installation#diagnostics)).
 
 ## Persistent Thrust while time-warping doesn't get the thrust penalty
 
 Correct, in this release. PT applies thrust as an orbit edit that the loaded force hook can't intercept,
 so the `1/γ³` cut for *unloaded* PT is deferred (the crew clock still tracks it). It's on the roadmap,
-paired with Principia's own persistent-thrust work. See [[Compatibility#propulsion-what-gets-you-to-relativistic-speed]].
+paired with Principia's own persistent-thrust work. See [propulsion](Compatibility#propulsion-what-gets-you-to-relativistic-speed) on the Compatibility page.
 
 ## Why is the sky changing colour at speed?
 
@@ -76,13 +76,13 @@ in map view). `dopplerVisual = false` turns all of it off.
 
 Almost always TUFX/PPv2 **TAA** - temporal reprojection fights the screen-space warp (no motion
 vectors) and is documented unsupported. Switch your TUFX profile to **SMAA or FXAA**; both are
-verified fine. Scatterer's own TAA is fine since 1.1.0 - leave it on. See [[Visuals#anti-aliasing]].
+verified fine. Scatterer's own TAA is fine since 1.1.0 - leave it on. See [anti-aliasing](Visuals#anti-aliasing-read-this-if-the-ship-edge-shimmers) on the Visuals page.
 
 ## Does the visual layer cost performance?
 
 Only while it's actually on screen: everything engages with the layer (β above the gate), and the
 rear sky camera only runs above β ≈ 0.5. Since 1.1.0 the sky is graded before the ship draws, so
-there is no per-frame plume mask on the default path. Normal in-system play renders exactly stock. If you need frames at cruise, see [[Visuals#performance]].
+there is no per-frame plume mask on the default path. Normal in-system play renders exactly stock. If you need frames at cruise, see [performance](Visuals#performance) on the Visuals page.
 
 ## How do I report a bug?
 

@@ -11,7 +11,7 @@ window is draggable.
 |-----|---------------|
 | `β = 0.9230 c` | speed as a fraction of `c`. |
 | `γ = 2.598` | the Lorentz factor. |
-| `thrust 5.7 %  (×1/γ³)` | effective thrust as a percentage of nominal - the `1/γ³` factor from [[The Physics#1-thrust-falls-as-1γ3-the-light-wall]]. Braking has the same authority (it is direction-blind). |
+| `thrust 5.7 %  (×1/γ³)` | effective thrust as a percentage of nominal - the `1/γ³` factor from [The Physics §1](The-Physics#1-thrust-falls-as-1γ-the-light-wall). Braking has the same authority (it is direction-blind). |
 | `supplies 38.5 %  rate (×1/γ)` | the proper-time consumption multiplier: life support drains this much slower than the mission clock. |
 | `felt gravity 1.52 g  (crew)` | the proper acceleration the crew feel from thrust (un-reduced), in g. Zero while coasting. |
 | `crew clock 38.5 %  of KSC's` | how fast the crew's clock runs against KSC's. |
