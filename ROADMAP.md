@@ -13,17 +13,17 @@ but still need a real playthrough:
 
 - **Play-test the untested features**: two-clock counter, VAB/SPH trip planner, Kerbalism resource
   dilation over a long cruise. (Attitude ×1/γ is already confirmed in-game.)
-- **FIXED (2026-07-19, in-game VERIFY pending) — trip-planner star list showed wrong distances**
+- **FIXED (2026-07-19, in-game VERIFY pending) - trip-planner star list showed wrong distances**
   (found in-game 2026-07-18 on a Kopernicus multi-star + Principia install: a star whose cfg places
   it at 40.67 ly listed as "237 ly"). Root cause: `EditorPlanner.BuildStars()` used
   `(b.position - home.position).magnitude`, but `CelestialBody.position` is not flight-propagated in
-  the VAB/SPH scene — under Kopernicus multi-star those are stale/prefab placements, so the
+  the VAB/SPH scene - under Kopernicus multi-star those are stale/prefab placements, so the
   difference is meaningless. Confirmed by elimination: the installed orbits (αCen A 4.158e16 m =
   4.40 ly, TRAPPIST-1 3.848e17 m = 40.67 ly, Proxima ±0.2 ly around A) cannot yield 237 ly at any
   epoch, so the read positions are not orbit-derived; Principia is uninvolved (it does not drive
-  celestials in editor scenes). Blast radius was the star LIST only — the plan math runs on the typed
+  celestials in editor scenes). Blast radius was the star LIST only - the plan math runs on the typed
   distance field, and ΔV/α reading is a separate path. **Fix as landed**: `OrbitPosFromRoot()`
-  composes `orbit.getRelativePositionAtUT()` (pure elements, no world positions — chosen over
+  composes `orbit.getRelativePositionAtUT()` (pure elements, no world positions - chosen over
   `getPositionAtUT()`, whose KSPDocsSite doc anchors it to the reference body's *current* position)
   up each `referenceBody` chain at one common UT; the shared root cancels in the difference, and the
   common xzy orbit frame preserves magnitudes. A circular top-level star lists exactly its SMA.
@@ -34,7 +34,7 @@ but still need a real playthrough:
   stage-7 sample (the LCtrl+LAlt+C census prints `part.force`); switch to a Harmony postfix if needed.
 - **Unloaded β source**: validate stock `obt_velocity`/`GetFrameVel` for on-rails vessels; the mechanic
   and clock depend on it during interstellar cruise.
-- **SpaceDock listing** — live at [mod/4404](https://spacedock.info/mod/4404/Relativity). CKAN is indexed;
+- **SpaceDock listing** - live at [mod/4404](https://spacedock.info/mod/4404/Relativity). CKAN is indexed;
   new releases are picked up automatically.
 
 ## Visual layer - structural work
@@ -47,7 +47,7 @@ the CHANGELOG); the old post-frame path stays one release as its fallback. What 
 - **Retire the post-frame fallback path** (`dopplerSkyGrade = false`) and its mask/SMAA machinery once
   the sky grade has survived a release in the wild.
 
-## v1.2 - autopilot / planner awareness of the weakened thrust — SHIPPED v1.2.0 (2026-07-20)
+## v1.2 - autopilot / planner awareness of the weakened thrust - SHIPPED v1.2.0 (2026-07-20)
 
 Because we cut thrust with a **corrective force** (to preserve fuel), the engine's *advertised* values
 (`finalThrust`, `maxThrust`, ISP) are left unchanged - only the net applied force becomes `F/γ³`. The
@@ -74,13 +74,13 @@ stable accessor (full detail: `docs/compatibility.md` §6/§9):
 - **Persistent Thrust - thrust correction.** Scale PT's unloaded Δv by 1/γ³ (Harmony on the orbit-edit
   path). **Deferred**: the owner is adding persistent-thrust support to Principia and its structure isn't
   known yet - resolve the PT thrust correction and the Principia β source together when it lands.
-- **Principia-fork warp burns (WS3) take NO γ³ correction — landed, structure now known
+- **Principia-fork warp burns (WS3) take NO γ³ correction - landed, structure now known
   (2026-07-18).** The fork's on-rails burn harvests thrust synthetically from engine modules
   (`maxThrust × thrustPercentage × throttle`, vacuum Isp) while the vessel is packed, so our
   corrective part-force never reaches it: a warp burn near c integrates Newtonian thrust and can
   cross c. Agreed fix shape (tracked on the fork side too, in its own mod-reference notes): the
   fork's harvest queries Relativity for a per-vessel 1/γ³ multiplier, present-guarded via
-  reflection — the same pattern as our Kerbalism adapter, mass flow stays nominal by design.
+  reflection - the same pattern as our Kerbalism adapter, mass flow stays nominal by design.
   **Relativity's side is DONE (2026-07-19)**: `RelativityApi.GetGamma(Vessel)` /
   `GetThrustMultiplier(Vessel)` (static, ApiVersion 1, identity when inactive, signatures frozen)
   shipped with the v1.2 compat work. Remaining work is on the fork side (wire its harvest to the
