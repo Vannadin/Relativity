@@ -10,10 +10,11 @@ match. Standalone, no planet-pack dependency.
 It only modulates forces and consumption rates. The physics integrator is never touched, so it runs
 alongside Principia exactly as it does on stock.
 
-Current status: v1.1.0. The core flight layer and the visual layer are verified in-game. A few of
-the integrations (two-clock counter, trip planner, Kerbalism dilation, RP-1) compile clean but
-haven't had a proper playthrough yet, see [`CHANGELOG.md`](CHANGELOG.md) for the per-feature status.
-Back up your save before a long relativistic mission.
+Current status: v1.2.0. The core flight layer, the visual layer and the MechJeb thrust adapter are
+verified in-game. A few of the integrations (two-clock counter, trip planner, Kerbalism dilation,
+RP-1, kOS) compile clean but haven't had a proper playthrough yet, see
+[`CHANGELOG.md`](CHANGELOG.md) for the per-feature status. Back up your save before a long
+relativistic mission.
 
 ## The idea
 
@@ -45,6 +46,10 @@ the trip. You pick a cruise speed around that tension.
   re-aimed to their aberrated bearings, and the sunflare shifting with them. The ship itself stays
   unshifted and the map view stays truthful. See the [wiki](https://github.com/Vannadin/Relativity/wiki)
   for details and performance numbers.
+- Autopilot honesty near c: kOS thrust suffixes, MechJeb's burn-time and guidance math, and the
+  stock navball burn timer all see the effective thrust instead of the advertised value, so burn
+  ETAs stop being wildly optimistic at relativistic speed. Each adapter only activates if the mod
+  is installed, and each has its own config switch.
 - Safety guards: everything switches off below a speed floor, under warp/jump, and above a sanity
   ceiling, so normal in-system play is untouched.
 
@@ -79,9 +84,10 @@ Two things worth knowing up front about the visuals:
 ## Compatibility
 
 Principia is safe by design (forces and rates only, never the integrator). Kerbalism 3.x and
-ROKerbalism are supported. The RP-1 retirement adapter is present but compile-verified only.
-Persistent Thrust is clock-only in this release. The full matrix with the engineering notes is in
-[`docs/compatibility.md`](docs/compatibility.md).
+ROKerbalism are supported. kOS, MechJeb and the stock navball burn timer get effective-thrust
+adapters so their burn math stays honest near c (new, compile-verified). The RP-1 retirement
+adapter is present but compile-verified only. Persistent Thrust is clock-only in this release. The
+full matrix with the engineering notes is in [`docs/compatibility.md`](docs/compatibility.md).
 
 ## Documentation
 

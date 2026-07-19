@@ -3,6 +3,47 @@
 All notable changes to **Relativity** are recorded here. This mod follows a simple
 `MAJOR.MINOR.PATCH` scheme; pre-1.0 releases are betas and may change behavior between versions.
 
+## v1.2.0 - 2026-07-20
+
+The compatibility-and-bugfix release: tools that read thrust now see the real (weakened) thrust,
+and the black-skybox capture bug is fixed at its root.
+
+- **Effective-thrust compatibility.** Because the thrust cut is a corrective force, engines still
+  advertise full thrust - so anything estimating burns from reported thrust thought you were γ³
+  times stronger than you are near c. Three present-guarded adapters fix the common readers, each
+  with its own cfg toggle (all default on, inert when the mod isn't installed):
+  - **MechJeb** (`compatMechJebThrust`): burn-time estimates, ignition timing and the live thrust
+    readouts report effective thrust. Binds both MechJeb member-name generations (2.15 release line
+    and the current dev line). In-game verified at γ = 19.6: reported thrust and acceleration match
+    nominal ÷ γ³ exactly. Known limit (MechJeb-side): the Flight Recorder *graph* window can't
+    handle relativistic magnitudes - close it at speed.
+  - **Stock burn timer** (`compatStockBurnTimer`): the navball "Est. Burn" / start-burn countdown
+    is stretched ×γ³. Snapshot at your current speed, so it drifts over a burn long enough to
+    change γ.
+  - **kOS** (`compatKosThrust`): the `MAXTHRUST`/`AVAILABLETHRUST` suffix family and `SHIP:THRUST`
+    report effective thrust; `ENGINE:THRUST` stays nominal (unpatchable inline lambda). Grounded
+    against kOS source; **not yet run with kOS installed** - report anything odd.
+- **Mod API.** `Relativity.RelativityApi` (ApiVersion 1): `GetGamma(Vessel)` and
+  `GetThrustMultiplier(Vessel)` (1/γ³), identity when the layer is inactive, cheap to call every
+  frame. For mods doing their own thrust math - consumption guide on the wiki's new Mod API page.
+- **Trip planner: star-list distances fixed.** The VAB planner listed wrong distances for
+  installed-star destinations (a 40.67 ly star showed as 237 ly) because editor-scene body
+  positions are not flight-propagated. Distances now come from orbital elements composed up the
+  reference chain, valid in every scene. Verified against the planner test suite; a multi-star
+  in-game pass is still outstanding.
+- **Black skybox at speed: fixed at the root.** The galaxy cubemap capture could permanently pin a
+  dimmed sky: stock KSP fades the skybox toward pure black inside an atmosphere, in daylight and
+  under sun glare, so a capture taken right after a launchpad/landed scene load (or facing the sun
+  in space) baked that darkness into the aberrated sky. The capture now waits until the vessel is
+  above any atmosphere, temporarily neutralizes the stock fade while it grabs the sky, and a
+  **"recapture skybox" button** on the dashboard forces a clean capture any time (the automatic
+  black-capture detector is unreliable on some GPU/format combos, so the button is the escape
+  hatch).
+- **Landed vessels read β = 0.** A kraken'd or cheat-teleported save can carry a near-c orbit
+  block while the craft physically sits on the ground - the layer then ran on the launchpad and
+  slowed Kerbalism rates. Ground state now wins over the orbit numbers. No change for legitimate
+  states (a real landed vessel's β is far below the activation gate).
+
 ## v1.1.0 - 2026-07-15
 
 The sky-grade release: the visual layer's grade now runs **before the ship draws**, which makes it

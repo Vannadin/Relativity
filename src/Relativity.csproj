@@ -7,7 +7,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <AssemblyName>Relativity</AssemblyName>
     <RootNamespace>Relativity</RootNamespace>
-    <Version>1.1.0</Version>                        <!-- must stay >=2 parts: KSPBuildTools splits FileVersion for [KSPAssembly] -->
+    <Version>1.2.0</Version>                        <!-- must stay >=2 parts: KSPBuildTools splits FileVersion for [KSPAssembly] -->
     <Deterministic>true</Deterministic>
 
     <!-- Output the DLL into the project-local mod-staging folder only.

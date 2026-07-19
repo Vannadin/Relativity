@@ -16,6 +16,9 @@ namespace Relativity
         public static bool   KerbalismDilation = true;            // scale Kerbalism metabolic consumption ×1/γ
         public static double AttitudeExponent  = 2.0;             // TORQUE ×1/γ^this on reaction-wheel/RCS (§2.7). 2 = torque×1/γ² → a torque-limited slew takes ~γ× longer (the physical rotation-rate ×1/γ); 1 would only give ~√γ×. 0 = off
         public static bool   RP1RetirementDilation = true;        // push RP-1 crew retirement date by the dilation (count proper time)
+        public static bool   CompatKosThrust       = true;        // kOS: SHIP/ENGINE thrust suffixes report EFFECTIVE thrust (×1/γ³) so dv/(F/m) burn scripts stay honest near c
+        public static bool   CompatMechJebThrust   = true;        // MechJeb: VesselState thrust + FuelFlowSimulation see ×1/γ³ (burn-time estimate, ignition timing, landing/ascent math)
+        public static bool   CompatStockBurnTimer  = true;        // stock navball maneuver burn timer ×γ³ (closed-source patch point; snapshot approximation — γ varies over a long burn)
         public static bool   FeltGravityComfort   = true;         // sustained thrust counts as Kerbalism "gravity" comfort (firm_ground)
         public static double FeltGravityThreshold = 0.1;          // MIN felt g (Σthrust/m) to count as gravity comfort
         public static double FeltGravityMax       = 1.5;          // MAX felt g — above this, too much accel to be "comfortable"
@@ -74,6 +77,9 @@ namespace Relativity
                 node.TryGetValue("kerbalismExcludedRules", ref KerbalismExcludedRules);  // comma-separated
                 node.TryGetValue("attitudeSkipModules",    ref AttitudeSkipModules);
                 node.TryGetValue("rp1RetirementDilation",  ref RP1RetirementDilation);
+                node.TryGetValue("compatKosThrust",        ref CompatKosThrust);
+                node.TryGetValue("compatMechJebThrust",    ref CompatMechJebThrust);
+                node.TryGetValue("compatStockBurnTimer",   ref CompatStockBurnTimer);
                 node.TryGetValue("feltGravityComfort",     ref FeltGravityComfort);
                 node.TryGetValue("feltGravityThreshold",   ref FeltGravityThreshold);
                 node.TryGetValue("feltGravityMax",         ref FeltGravityMax);

@@ -31,10 +31,12 @@ model dose.)
 
 ## MechJeb / kOS mis-times my burns near c
 
-Known limitation. The mod cuts thrust with a corrective *force*, leaving the engine's **advertised**
-thrust/ISP unchanged - so tools estimating from reported thrust don't see the reduction and
-under-estimate burn time. Measured-acceleration executors self-correct partially. A proper fix (exposing
-an effective-thrust value these tools can read) is on the roadmap. See [autopilots & time-warp](Compatibility#autopilots--time-warp).
+Fixed in v1.2. The mod cuts thrust with a corrective *force*, leaving the engine's **advertised**
+thrust/ISP unchanged - so anything estimating burns from reported thrust used to under-estimate them by
+γ³ near c. Adapters now rescale what MechJeb, kOS and the stock navball burn timer read, so their
+estimates match the real acceleration (each has its own toggle - see
+[autopilots & time-warp](Compatibility#autopilots--time-warp)). Writing your own tool? Query the
+[[Mod API|API]] instead of the engine modules.
 
 ## Does this work with Principia?
 

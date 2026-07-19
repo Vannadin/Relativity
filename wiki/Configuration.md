@@ -15,6 +15,9 @@ RELATIVITY
     kerbalismExcludedRules = radiation
     attitudeSkipModules = ModuleControlSurface, ModuleAeroSurface, ModuleGimbal
     rp1RetirementDilation = true
+    compatKosThrust = true
+    compatMechJebThrust = true
+    compatStockBurnTimer = true
 }
 ```
 
@@ -30,6 +33,9 @@ RELATIVITY
 | `kerbalismExcludedRules` | `radiation` | Comma-separated Kerbalism rules left at coordinate time (**not** dilated). Radiation must stay here so dose keeps ticking at ×1.00 - this is the "radiation, not starvation" design. Stock and ROKerbalism both name it `radiation`. |
 | `attitudeSkipModules` | `ModuleControlSurface, ModuleAeroSurface, ModuleGimbal` | `ITorqueProvider` modules **not** slowed by the attitude `1/γ`. Every other torque provider (stock or modded reaction wheels / RCS) is auto-discovered and scaled - add a module here to exempt it. |
 | `rp1RetirementDilation` | `true` | **RP-1 only.** Push a crew's retirement date forward by their accumulated dilation, so retirement counts the crew's proper time rather than the calendar. Independent of RP-1's own (capped) "interesting flight" extension. |
+| `compatKosThrust` | `true` | **kOS.** The `MAXTHRUST`/`AVAILABLETHRUST` suffix family and `SHIP:THRUST` report **effective** thrust (×1/γ³), so `dv/(F/m)` burn scripts stay honest near c. `ENGINE:THRUST` stays nominal (unpatchable). Idle when kOS isn't installed. |
+| `compatMechJebThrust` | `true` | **MechJeb.** Burn-time estimates, ignition timing and the live thrust readouts see effective thrust. Burn cutoff was already self-correcting; this fixes the ETA and the ignition lead. Idle when MechJeb isn't installed. |
+| `compatStockBurnTimer` | `true` | **Stock navball.** "Est. Burn" and the start-burn countdown are stretched ×γ³. A snapshot at your current speed - over a burn long enough to change γ, the real time drifts. The stock ΔV app itself is left untouched. |
 
 ## Visual layer
 

@@ -227,6 +227,12 @@ namespace Relativity
                     // Player-facing knobs (the look itself is finalized — see RelativityConfig defaults).
                     RelativityConfig.DopplerForceHDR = GUILayout.Toggle(RelativityConfig.DopplerForceHDR, "force HDR (camera stack)");
                     RelativityConfig.DopplerColorStrength = Slider("colour str", RelativityConfig.DopplerColorStrength, 0f, 4f);
+                    // Escape hatch for a black galaxy capture: the content probe can't veto reliably
+                    // (readback lies on some GPU/format combos), so the player forces a clean one.
+                    // CubeReady=false is the designed re-capture entry — the galaxy blitter
+                    // passthroughs during RenderToCubemap, so the fresh capture sees the raw sky.
+                    if (GUILayout.Button("recapture skybox"))
+                        DopplerVisual.CubeReady = false;
 
                     // Dev tuning kit — debugMode only. These write the MM-patchable advanced statics.
                     if (RelativityConfig.DebugMode)

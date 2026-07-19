@@ -62,17 +62,20 @@ generic **`WarpFlag`** and the dashboard shows a collapsed WARP panel.
 ## Autopilots & time-warp
 
 Because the mod cuts thrust with a *corrective force*, an engine's **advertised** thrust/ISP are left
-unchanged - only the net applied force becomes `F/γ³`. So tools that estimate from *reported* thrust are
-blind to the reduction near c.
+unchanged - only the net applied force becomes `F/γ³`. Tools estimating from *reported* thrust used to be
+blind to the reduction near c; since v1.2 adapters fix the common readers. Each has its own
+[[Configuration]] toggle, all on by default, and each stays idle when its mod isn't installed.
 
 | Mod | Status |
 |-----|--------|
-| **MechJeb** | ⚠️ Burn-time estimates and node timing computed from reported thrust will under-estimate near c; measured-acceleration executors partially self-correct. A first-class fix is on the roadmap. Attitude `1/γ` is surfaced as a torque reduction so MechJeb's turn predictions stay self-consistent. |
-| **kOS** | ⚠️ Same thrust blind spot. Closed-loop steering on measured angular velocity is fine; only a script that hardcodes a turn *deadline* (instead of polling angle error) would misbehave. |
+| **MechJeb** | ✅ Adapted (v1.2) - burn-time estimates, ignition timing and the live thrust readouts report effective thrust, so node ETAs and ignition leads are right near c. Burn cutoff was already self-correcting. Attitude `1/γ` is surfaced as a torque reduction so MechJeb's turn predictions stay self-consistent. Toggle `compatMechJebThrust`. One known limit: the **Flight Recorder graph** window can't handle relativistic magnitudes (a MechJeb-side array overrun) - close it at speed. |
+| **kOS** | ✅ Adapted (v1.2) - the `MAXTHRUST`/`AVAILABLETHRUST` suffix family and `SHIP:THRUST` report effective thrust, so the usual `dv/(F/m)` burn script works near c. `ENGINE:THRUST` stays nominal (unpatchable); measured paths (`SHIP:SENSORS:ACC`, velocity differencing) were always correct. Toggle `compatKosThrust`. |
+| **Stock burn timer** | ✅ The navball "Est. Burn" / start-burn countdown is stretched ×γ³ (v1.2). A snapshot at your current speed, so it drifts over a burn long enough to change γ. The stock ΔV app itself is left untouched. Toggle `compatStockBurnTimer`. |
 | **Time Control / Better Time Warp** | ✅ The crew-clock accumulator reads live `fixedDeltaTime` + actual UT delta, so custom warp-rate tables are handled. |
 | **Kerbal Alarm Clock** | ✅ Agnostic. |
 
 ## See also
 
 - [[Configuration]] - the toggles referenced above.
-- [[FAQ]] - the MechJeb/kOS thrust blind spot explained.
+- [[Mod API|API]] - the effective-thrust accessor other mods can query.
+- [[FAQ]] - the autopilot thrust story in plain words.

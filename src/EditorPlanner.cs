@@ -34,7 +34,9 @@ namespace Relativity
         // Destination presets discovered from whatever star systems are installed — never hardcoded,
         // so multi-star packs (Kcalbeloh, Interstellar Consortium, Blueshift, …) auto-populate and
         // stock (one star) falls back to manual entry. Built lazily on first draw (bodies exist in
-        // the editor scene). VERIFY in-game: CelestialBody.position is valid/stable in the editor.
+        // the editor scene). Distances come from orbital elements, NOT CelestialBody.position —
+        // world positions are not flight-propagated in the VAB/SPH (found in-game 2026-07-18:
+        // a 40.67 ly star listed as 237 ly under Kopernicus multi-star).
         struct Star { public string Name; public double Ly; }
         List<Star> stars;
         int starIdx;
@@ -197,21 +199,39 @@ namespace Relativity
             useLy = true;
         }
 
-        // Enumerate installed stars (isStar) and their distance from the home star. Frame-invariant:
-        // both positions live in the same world frame, so their difference is unaffected by the
-        // floating origin. Uses bodyName to avoid the localized "^N" gender suffix on displayName.
+        // Enumerate installed stars (isStar) and their distance from the home star, from orbital
+        // elements at one common UT (elements are valid in every scene; CelestialBody.position is
+        // stale/prefab in the editor — the 2026-07-18 "237 ly" bug). A circular top-level star lists
+        // exactly its SMA. Uses bodyName to avoid the localized "^N" gender suffix on displayName.
         void BuildStars()
         {
             stars = new List<Star>();
             CelestialBody home = HomeStar();
             if (home == null || FlightGlobals.Bodies == null) return;
-            Vector3d h = home.position;
+            double ut = Planetarium.fetch != null ? Planetarium.GetUniversalTime() : 0.0;
+            Vector3d h = OrbitPosFromRoot(home, ut);
             foreach (CelestialBody b in FlightGlobals.Bodies)
             {
                 if (b == null || !b.isStar || b == home) continue;
-                stars.Add(new Star { Name = b.bodyName, Ly = (b.position - h).magnitude / LY });
+                stars.Add(new Star { Name = b.bodyName, Ly = (OrbitPosFromRoot(b, ut) - h).magnitude / LY });
             }
             if (stars.Count > 0) Pick(0);   // sync the distance field to the shown star so they agree
+        }
+
+        // Position of b relative to the tree root at UT, composed from getRelativePositionAtUT up the
+        // referenceBody chain — pure orbital elements, no world positions. The shared root cancels in
+        // any difference, and every term lives in the orbits' common (xzy-swizzled) frame, so the
+        // magnitude of a difference is a true distance without converting to world axes.
+        static Vector3d OrbitPosFromRoot(CelestialBody b, double ut)
+        {
+            Vector3d p = Vector3d.zero;
+            for (int i = 0; b != null && b.orbitDriver != null && b.orbit != null
+                            && b.referenceBody != null && b.referenceBody != b && i < 16; i++)
+            {
+                p += b.orbit.getRelativePositionAtUT(ut);
+                b = b.referenceBody;
+            }
+            return p;
         }
 
         // The star the homeworld orbits — walk up the reference-body chain until a star. Better than

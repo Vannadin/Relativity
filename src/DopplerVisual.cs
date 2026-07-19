@@ -44,6 +44,12 @@ namespace Relativity
         static int cubeFaceCap = int.MaxValue;   // learned from a driver-refused Create (E_OUTOFMEMORY)
         int frames;                 // small settle delay before the galaxy is ready to capture
         int captureRetryAt;         // backoff gate after a FAILED capture — never storm every frame
+        // Galaxy fade neutralization while a capture is pending (see TryCaptureCube): stock knobs
+        // saved for restore. Held across the wait window so the MPB-applied colour settles at max.
+        bool galaxyNeutral;
+        int neutralUntil;
+        Color savedMinGalaxy;
+        float savedAtmosLimit, savedGlareLimit, savedDaytimeLimit;
         bool rearOn;                // rear-camera hysteresis state (on ≥0.5, off <0.47 — no threshold thrash)
         // Settings value seen at the last capture check. The steady-state path must be allocation-free:
         // the skybox measurement (GetComponentsInChildren) runs ONLY when this changed or no cube exists.
@@ -530,7 +536,7 @@ namespace Relativity
         // de-rotation Singularity does).
         void TryCaptureCube()
         {
-            if (aberrMat == null || !RelativityConfig.DopplerAberration) return;
+            if (aberrMat == null || !RelativityConfig.DopplerAberration) { RestoreGalaxyFade(); return; }
             if (ScaledCamera.Instance == null || ScaledCamera.Instance.galaxyCamera == null) return;
             // Scene-readiness gate + a longer settle: a cold-launch capture 0.3 s into the flight
             // scene (owner-hit 2026-07-15) can race the scene fade-in and "succeed" over a black
@@ -538,6 +544,19 @@ namespace Relativity
             // dark. The content probe below is the backstop; this gate avoids most attempts.
             if (!FlightGlobals.ready) return;
             if (++frames < 30) return;
+            // Galaxy visibility gate (owner-diagnosed 2026-07-20, launchpad/landed scene loads):
+            // stock GalaxyCubeControl fades the skybox toward minGalaxyColor (pure black) by air
+            // pressure, daytime and sun glare (airPressureFade/daytimeFadeLimit/glareFadeLimit —
+            // KSPDocsSite class_galaxy_cube_control; the script lives under Scenery/atmosphere/).
+            // A capture taken inside an atmosphere grabs that dimmed sky and pins it, and no settle
+            // delay can help because the dimming is steady-state. Defer until the vessel is above
+            // any atmosphere — the visual can't activate at sub-relativistic β anyway, so waiting
+            // costs nothing. Deliberately NOT gated on LandedOrSplashed: situation flags are
+            // unreliable at extreme β, and an airless surface doesn't dim the galaxy.
+            Vessel av = FlightGlobals.ActiveVessel;
+            if (av == null) return;
+            if (av.mainBody != null && av.mainBody.atmosphere && av.altitude < av.mainBody.atmosphereDepth)
+            { RestoreGalaxyFade(); return; }   // descended mid-wait — don't hold the knobs in atmosphere
 
             // Face size from the settings screen (Difficulty Options → Relativity): Auto measures the
             // installed skybox (TextureReplacer's swapped textures included, since it swaps them on
@@ -580,6 +599,33 @@ namespace Relativity
                     + "/face (VRAM " + SystemInfo.graphicsMemorySize + " MB reported"
                     + (cubeFaceCap != int.MaxValue ? ", driver cap " + cubeFaceCap : "") + ").");
             if (CubeReady && galaxyCube != null && galaxyCube.width == desired) { lastDetail = detail; return; }
+
+            // Galaxy fade neutralization (owner point 2026-07-20): even in space, stock
+            // GalaxyCubeControl's glare/daytime fades can hold the skybox below full brightness
+            // (glareFadeLimit 0.6 — up to ×0.6 with the sun in view), applied via a
+            // MaterialPropertyBlock on the cube renderers and lerped at glareFadeLerpRate — so a
+            // capture would pin that dim state into the cube. Neutralize through PUBLIC knobs only:
+            // minGalaxyColor == maxGalaxyColor makes any min↔max blend resolve to max regardless of
+            // the fade value, and limits at 1 float the fade factors themselves (DistantObject's
+            // DarkenSky disables glare fade exactly this way). Hold ~90 frames so even the slow
+            // lerp path settles before the capture, then restore. min is re-asserted per frame
+            // because mods (DistantObject) rewrite maxGalaxyColor every Update.
+            GalaxyCubeControl gcc = GalaxyCubeControl.Instance;
+            if (gcc != null)
+            {
+                if (!galaxyNeutral)
+                {
+                    savedMinGalaxy    = gcc.minGalaxyColor;
+                    savedAtmosLimit   = gcc.atmosFadeLimit;
+                    savedGlareLimit   = gcc.glareFadeLimit;
+                    savedDaytimeLimit = gcc.daytimeFadeLimit;
+                    gcc.atmosFadeLimit = 1f; gcc.glareFadeLimit = 1f; gcc.daytimeFadeLimit = 1f;
+                    galaxyNeutral = true;
+                    neutralUntil  = frames + 90;
+                }
+                gcc.minGalaxyColor = gcc.maxGalaxyColor;
+                if (frames < neutralUntil) return;
+            }
 
             // CubeReady false FIRST: the galaxy blitter passthroughs while RenderToCubemap re-renders
             // the camera, so the capture always sees the unwarped sky (also true on re-capture).
@@ -640,7 +686,23 @@ namespace Relativity
             lastDetail = detail;
             CubeReady = true;
             CubeFace = desired;
+            RestoreGalaxyFade();
             Debug.Log("[Relativity] galaxy cubemap captured at " + desired + "/face — Doppler aberration enabled.");
+        }
+
+        // Put GalaxyCubeControl's fade knobs back after a capture (or when the pending capture is
+        // abandoned). Failed-capture backoffs deliberately do NOT restore — the retry is imminent
+        // and rewinding the neutralize wait would just delay it.
+        void RestoreGalaxyFade()
+        {
+            if (!galaxyNeutral) return;
+            galaxyNeutral = false;
+            GalaxyCubeControl gcc = GalaxyCubeControl.Instance;
+            if (gcc == null) return;
+            gcc.minGalaxyColor    = savedMinGalaxy;
+            gcc.atmosFadeLimit    = savedAtmosLimit;
+            gcc.glareFadeLimit    = savedGlareLimit;
+            gcc.daytimeFadeLimit  = savedDaytimeLimit;
         }
 
         // Read the 1×1 top mip (= face average) of three faces of the freshly captured cube.
@@ -835,6 +897,7 @@ namespace Relativity
 
         void OnDestroy()
         {
+            RestoreGalaxyFade();
             GameEvents.OnCameraChange.Remove(OnCameraChange);
             Camera.onPreCull -= SunlightPreCull;
             Camera.onPreCull -= VesselMaskPreCull;

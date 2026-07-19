@@ -8,6 +8,7 @@
 - [[Trip Planner]]
 - [[Configuration]]
 - [[Compatibility]]
+- [[Mod API|API]]
 - [[FAQ]]
 
 ---

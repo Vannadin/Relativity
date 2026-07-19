@@ -33,6 +33,12 @@ namespace Relativity
         {
             if (vessel == null || vessel.orbit == null) return Vector3d.zero;
 
+            // Ground state wins over the orbit numbers (owner-hit 2026-07-20): a landed/splashed
+            // vessel moves with the surface (real β ≲ 1e-5, far below betaMin), but a kraken'd or
+            // cheat-teleported save can carry a near-c orbit block while physically on the ground —
+            // a pad vessel read β=0.967 and had its Kerbalism rates scaled ×0.254.
+            if (vessel.LandedOrSplashed) return Vector3d.zero;
+
             // SOI == Sun  ⇔  the reference body has no parent.
             CelestialBody soi = vessel.orbit.referenceBody;
             if (soi != null && soi.orbit == null)
