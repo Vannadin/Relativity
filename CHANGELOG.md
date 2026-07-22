@@ -3,6 +3,29 @@
 All notable changes to **Relativity** are recorded here. This mod follows a simple
 `MAJOR.MINOR.PATCH` scheme; pre-1.0 releases are betas and may change behavior between versions.
 
+## v1.2.1 - 2026-07-22
+
+Skybox patch release: the aberrated sky no longer shows mirrored regions, the capture is quieter
+in the console, and its one-off VRAM spike is smaller.
+
+- **Mirrored sky at speed: fixed.** Unity's built-in cubemap capture bakes some faces mirrored
+  when the target is a render texture, so regions of the aberrated starfield read left-right
+  flipped against the real sky (reported from a Principia install; reproduces on stock). The
+  galaxy is now captured face by face with explicitly oriented cameras, so what the shader
+  samples matches the live sky exactly. Verified in-game on a stock install and alongside
+  Principia. Two MM-only escape hatches ship with it: `dopplerCubeManualCapture = false` returns
+  to the old capture path (kept for one release), and `dopplerCubeCaptureFlipY = false` is for
+  OpenGL players in case the new sky reads upside-down per face (the default orientation is
+  DX11-verified).
+- **Console warning spam: fixed.** Every galaxy capture logged three Unity "Remapping between
+  formats is not supported" warnings plus a false "cube content probe reads black" line: the
+  capture health probe read the float cube in a way DX11 cannot service, so it warned and read
+  zeros on every good capture. It now reads through a supported conversion path - silent, and
+  the "black" breadcrumb only fires on an actually black capture.
+- **Capture cost trimmed.** The temporary face buffer used during the capture is depthless (the
+  skybox needs no z-test), cutting the one-off capture VRAM spike by a third at high sky-detail
+  settings (8192/face: 384 → 256 MB transient).
+
 ## v1.2.0 - 2026-07-20
 
 The compatibility-and-bugfix release: tools that read thrust now see the real (weakened) thrust,

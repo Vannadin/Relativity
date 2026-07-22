@@ -49,6 +49,8 @@ namespace Relativity
         public static double DopplerHeadlight     = 0.05;         // forward "headlight": the beamed blue-white forward sky acts as a real light on the vessel — a directional light aimed along −velocity, colour = the sky's forward Doppler tint, intensity = this scale × (forward Planck beam − 1) run through a soft cap. 0 = off
         public static double DopplerHeadlightMax  = 1.0;          // headlight intensity ceiling: the bounded curve max·(1−e^(−scale·(beam−1)/max)) approaches this asymptotically, so no β can overexpose the hull past it. Owner-calibrated 1.0 (2026-07-13) (MM-only knob)
         public static bool   DopplerSkyGrade      = true;         // THE DEFAULT PATH (promoted 2026-07-15; owner GO): grade the sky BEFORE the ship draws (CommandBuffer at BeforeForwardOpaque / BeforeGBuffer) instead of separating it back out of the finished frame — the depth mask, vessel-mask camera, flare machinery and SMAA chain all become unnecessary; ship/plumes/flare keep their stock look by draw order. Never loses on perf (−4.7 ms burning, pinned A/B) and coexists with Scatterer TAA. Needs a bundle with pass 5; falls back to the normal path otherwise. false = the pre-promotion normal path (kept as a fallback for one release)
+        public static bool   DopplerCubeManualCapture = true;     // capture the galaxy cube face-by-face with our own camera orientations instead of Camera.RenderToCubemap (owner-hit 2026-07-22: the RT-cube RenderToCubemap path bakes faces mirrored — a sky region reads left-right flipped). false = the old RenderToCubemap path, kept one release as insurance (MM-only knob)
+        public static bool   DopplerCubeCaptureFlipY  = true;     // manual-capture render row order vs the cube face's texel order: TRUE (negate projection Y per face) verified correct on DX11 (owner 2026-07-22). If the sky reads per-face UPSIDE-DOWN on another graphics API (OpenGLCore), set false and recapture (MM-only knob; dashboard toggle recaptures automatically)
         public static double DopplerRearDensity     = 4.0;        // rear live-camera RT density factor over raw screen px/deg: the rear-POLE aberration magnification is γ(1+β) (4-10× at cruise β) while the old ×2 split cone-edge vs pole — the exact aft direction stayed undersampled at any cube res (owner report 2026-07-15). 4 ≈ sharp pole at 1440p-class with the 4096 cap; raise/lower against the profiler (MM-only knob; dev slider)
         public static double DopplerFlareWhiteBleed = 1.0;        // SG flare pass: overexposure transfer for the SHIFTED flare colour, separate from the sky's dopplerWhiteBleed (owner request 2026-07-15) — past channel-1 the flare core bleeds toward white at this rate instead of per-channel clipping (hue distortion at the brightest pixels); 0 = hue-preserving normalize (MM-only knob)
 
@@ -103,6 +105,8 @@ namespace Relativity
                 node.TryGetValue("dopplerHeadlight",       ref DopplerHeadlight);
                 node.TryGetValue("dopplerHeadlightMax",    ref DopplerHeadlightMax);
                 node.TryGetValue("dopplerSkyGrade",        ref DopplerSkyGrade);
+                node.TryGetValue("dopplerCubeManualCapture", ref DopplerCubeManualCapture);
+                node.TryGetValue("dopplerCubeCaptureFlipY",  ref DopplerCubeCaptureFlipY);
                 node.TryGetValue("dopplerRearDensity",     ref DopplerRearDensity);
                 node.TryGetValue("dopplerFlareWhiteBleed", ref DopplerFlareWhiteBleed);
             }

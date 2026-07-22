@@ -64,6 +64,11 @@ Shader "Relativity/GalaxyAberration"
                     ? cs * vel + sqrt(saturate(1.0 - cs * cs)) * (perp / pl)
                     : ray;   // looking along ±velocity: direction is a fixed point of the map
 
+                // Mirrored-sky postmortem (2026-07-22): a sky-fixed region read left-right flipped.
+                // A fetch-axis probe here (negate X/Y/Z of src) ruled out a whole-sphere parity
+                // error — the mirror was PER-FACE, baked by RenderToCubemap, fixed at the capture
+                // side (DopplerVisual.CaptureCubeFaces). The fetch stays a plain world-direction
+                // texCUBE; if a mirrored sky ever returns, suspect the capture path first.
                 float4 col = texCUBE(_GalaxyCube, src);
 
                 if (_RearOn > 0.5)

@@ -662,7 +662,10 @@ namespace Relativity
             }
             // A failed capture must NOT count as ready — sampling an unrendered cube blacks out the
             // whole sky (red-team F2). Back off ~2s and retry instead.
-            if (!ScaledCamera.Instance.galaxyCamera.RenderToCubemap(galaxyCube, 63))
+            bool captured = RelativityConfig.DopplerCubeManualCapture
+                ? CaptureCubeFaces(ScaledCamera.Instance.galaxyCamera, galaxyCube)
+                : ScaledCamera.Instance.galaxyCamera.RenderToCubemap(galaxyCube, 63);
+            if (!captured)
             {
                 galaxyCube.Release();
                 Destroy(galaxyCube);
@@ -690,6 +693,69 @@ namespace Relativity
             Debug.Log("[Relativity] galaxy cubemap captured at " + desired + "/face — Doppler aberration enabled.");
         }
 
+        // Manual six-face capture replacing Camera.RenderToCubemap (owner-hit 2026-07-22, Principia
+        // install, STOCK skybox): the RenderToCubemap-into-RT-cube path bakes face content mirrored —
+        // a sky-fixed region reads left-right flipped, a recapture reproduces it identically, and no
+        // single-axis fetch flip can express a per-face mirror (the _CubeFlipAxis sweep 1/2/3 all
+        // failed). Render each face ourselves with an explicit camera orientation chosen so a raw
+        // row-for-row CopyTexture lands exactly where texCUBE's face u/v layout (the D3D cube spec:
+        // +X u=-z v=-y · -X u=+z v=-y · +Y u=+x v=+z · -Y u=+x v=-z · +Z u=+x v=-y · -Z u=-x v=-y)
+        // expects it — both ends of the convention are now ours, nothing left to Unity's flip logic.
+        // dopplerCubeCaptureFlipY: the render's row order vs the face's texel order. TRUE (negated
+        // projection Y) verified correct on DX11 (owner 2026-07-22, mirror gone); OpenGLCore players
+        // seeing a per-face upside-down sky flip it to false via MM/dashboard (auto-recaptures).
+        static readonly Vector3[] faceFwd = { Vector3.right, Vector3.left, Vector3.up,   Vector3.down,    Vector3.forward, Vector3.back };
+        static readonly Vector3[] faceUp  = { Vector3.up,    Vector3.up,   Vector3.back, Vector3.forward, Vector3.up,      Vector3.up   };
+
+        bool CaptureCubeFaces(Camera galaxyCam, RenderTexture cube)
+        {
+            RenderTexture face = null;
+            GameObject go = null;
+            try
+            {
+                // Depthless: the galaxy layer is 6 non-overlapping unlit quads, so nothing needs a
+                // z-test and the capture spike drops to the colour plane alone (8192/face: 384→256MB
+                // transient). Same format as the cube so CopyTexture is raw texels (no conversion
+                // path to smuggle a flip back in).
+                face = new RenderTexture(cube.width, cube.height, 0, cube.format);
+                if (!face.Create()) return false;
+                go = new GameObject("RelativityCubeFaceCamera");
+                Camera cam = go.AddComponent<Camera>();
+                cam.CopyFrom(galaxyCam);            // culling mask, clear flags, background, HDR
+                cam.enabled = false;                // rendered by explicit .Render() calls only
+                cam.targetTexture = face;
+                cam.rect = new Rect(0f, 0f, 1f, 1f);
+                cam.aspect = 1f;
+                cam.fieldOfView = 90f;
+                cam.transform.position = galaxyCam.transform.position;
+                bool flipY = RelativityConfig.DopplerCubeCaptureFlipY;
+                if (flipY)
+                    cam.projectionMatrix = Matrix4x4.Scale(new Vector3(1f, -1f, 1f)) * cam.projectionMatrix;
+                for (int f = 0; f < 6; f++)
+                {
+                    cam.transform.rotation = Quaternion.LookRotation(faceFwd[f], faceUp[f]);
+                    // The negated-Y projection inverts triangle winding — flip culling for the draw.
+                    if (flipY) GL.invertCulling = true;
+                    cam.Render();
+                    if (flipY) GL.invertCulling = false;
+                    Graphics.CopyTexture(face, 0, 0, cube, f, 0);
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Relativity] manual cube capture failed ("
+                    + e.GetType().Name + ": " + e.Message + ") — will retry.");
+                return false;
+            }
+            finally
+            {
+                GL.invertCulling = false;
+                if (go != null) Destroy(go);
+                if (face != null) { face.Release(); Destroy(face); }
+            }
+        }
+
         // Put GalaxyCubeControl's fade knobs back after a capture (or when the pending capture is
         // abandoned). Failed-capture backoffs deliberately do NOT restore — the retry is imminent
         // and rewinding the neutralize wait would just delay it.
@@ -706,20 +772,28 @@ namespace Relativity
         }
 
         // Read the 1×1 top mip (= face average) of three faces of the freshly captured cube.
-        // Returns true when all three read as zero. ADVISORY ONLY — on some GPU/format combos
-        // (owner's DX11 + R11G11B10: real captures read all-zero) the readback itself lies, so
-        // callers must never veto a capture on this.
+        // Returns true when all three read as zero. ADVISORY ONLY — never veto a capture on this.
+        // ReadPixels straight off the R11G11B10 cube spammed "Remapping between formats 74 -> 52
+        // is not supported" per probed face and returned zeros (owner console report 2026-07-22)
+        // — the long-documented "readback lies" was exactly that unsupported CPU remap. Route the
+        // top-mip texel through a same-format CopyTexture (raw, no remap) and a 2D Blit into
+        // ARGB32 (GPU-side conversion; ARGB32 readback is universal): silent, and now truthful.
         bool CubeLooksBlack()
         {
             int topMip = galaxyCube.mipmapCount - 1;
-            var probe = new Texture2D(1, 1, TextureFormat.RGBAFloat, false);
+            var probe = new Texture2D(1, 1, TextureFormat.ARGB32, false);
+            RenderTexture mip1 = null, read1 = null;
             var prev = RenderTexture.active;
             float maxC = 0f;
             try
             {
+                mip1  = RenderTexture.GetTemporary(1, 1, 0, galaxyCube.format);
+                read1 = RenderTexture.GetTemporary(1, 1, 0, RenderTextureFormat.ARGB32);
                 foreach (var face in new[] { CubemapFace.PositiveX, CubemapFace.PositiveY, CubemapFace.NegativeZ })
                 {
-                    Graphics.SetRenderTarget(galaxyCube, topMip, face);
+                    Graphics.CopyTexture(galaxyCube, (int)face, topMip, 0, 0, 1, 1, mip1, 0, 0, 0, 0);
+                    Graphics.Blit(mip1, read1);
+                    RenderTexture.active = read1;
                     probe.ReadPixels(new Rect(0, 0, 1, 1), 0, 0, false);
                     Color c = probe.GetPixel(0, 0);
                     maxC = Mathf.Max(maxC, Mathf.Max(c.r, Mathf.Max(c.g, c.b)));
@@ -734,8 +808,11 @@ namespace Relativity
             finally
             {
                 RenderTexture.active = prev;
+                if (mip1  != null) RenderTexture.ReleaseTemporary(mip1);
+                if (read1 != null) RenderTexture.ReleaseTemporary(read1);
                 Destroy(probe);
             }
+            // 8-bit floor: any lit average reads ≥ 1/255, so "black" = exactly zero channels.
             return maxC < 1e-4f;
         }
 

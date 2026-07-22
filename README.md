@@ -10,7 +10,7 @@ match. Standalone, no planet-pack dependency.
 It only modulates forces and consumption rates. The physics integrator is never touched, so it runs
 alongside Principia exactly as it does on stock.
 
-Current status: v1.2.0. The core flight layer, the visual layer and the MechJeb thrust adapter are
+Current status: v1.2.1. The core flight layer, the visual layer and the MechJeb thrust adapter are
 verified in-game. A few of the integrations (two-clock counter, trip planner, Kerbalism dilation,
 RP-1, kOS) compile clean but haven't had a proper playthrough yet, see
 [`CHANGELOG.md`](CHANGELOG.md) for the per-feature status. Back up your save before a long

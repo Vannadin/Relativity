@@ -291,6 +291,16 @@ namespace Relativity
                         // Master switch first: off = colour/beaming only (kills sky warp + rear cam +
                         // body warp in one flip) — the pre-distortion state, for shimmer bisection.
                         RelativityConfig.DopplerAberration = GUILayout.Toggle(RelativityConfig.DopplerAberration, "aberration (sky warp + rear cam)");
+                        // Manual 6-face capture (the 2026-07-22 mirrored-sky fix; flip Y = true is
+                        // the DX11-verified default). Both toggles change the CAPTURE, so flipping
+                        // either forces a recapture via the designed entry (CubeReady=false;
+                        // the blitter passthroughs meanwhile).
+                        bool manualCap = GUILayout.Toggle(RelativityConfig.DopplerCubeManualCapture, "manual cube capture");
+                        if (manualCap != RelativityConfig.DopplerCubeManualCapture)
+                        { RelativityConfig.DopplerCubeManualCapture = manualCap; DopplerVisual.CubeReady = false; }
+                        bool capFlip = GUILayout.Toggle(RelativityConfig.DopplerCubeCaptureFlipY, "cube capture flip Y");
+                        if (capFlip != RelativityConfig.DopplerCubeCaptureFlipY)
+                        { RelativityConfig.DopplerCubeCaptureFlipY = capFlip; DopplerVisual.CubeReady = false; }
                         // Rear-pole sharpness ↔ RT size lever (the ground-truth line shows the
                         // resulting N²); calibrate against the profiler if fps moves.
                         RelativityConfig.DopplerRearDensity = Slider("rear dens", RelativityConfig.DopplerRearDensity, 1f, 6f);

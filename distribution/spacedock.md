@@ -44,11 +44,11 @@ is what makes it safe alongside Principia and identical on the stock flight mode
 - Harmony (`Harmony2`), required
 
 ### Status
-v1.2.0: core relativistic flight, the visual layer and the MechJeb thrust adapter are verified
+v1.2.1: core relativistic flight, the visual layer and the MechJeb thrust adapter are verified
 in-game. MechJeb, kOS and the stock burn timer now see the real (weakened) thrust near c, and the
-black-skybox capture bug is fixed. Some integrations (two-clock counter, trip planner, Kerbalism
-dilation, RP-1, kOS) are built and compile-clean but not yet play-tested; reports on the GitHub
-issue tracker are very welcome. Back up your save before a long relativistic mission.
+black and mirrored skybox capture bugs are fixed. Some integrations (two-clock counter, trip
+planner, Kerbalism dilation, RP-1, kOS) are built and compile-clean but not yet play-tested;
+reports on the GitHub issue tracker are very welcome. Back up your save before a long relativistic mission.
 
 Source, changelog, and full docs: https://github.com/Vannadin/Relativity
 Wiki: https://github.com/Vannadin/Relativity/wiki
